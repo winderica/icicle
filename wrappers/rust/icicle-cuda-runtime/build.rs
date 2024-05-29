@@ -10,7 +10,7 @@ fn cuda_include_path() -> &'static str {
 
     #[cfg(target_os = "linux")]
     {
-        "/usr/local/cuda/include"
+        concat!(env!("CUDA_PATH"), "/include")
     }
 }
 
@@ -22,7 +22,7 @@ fn cuda_lib_path() -> &'static str {
 
     #[cfg(target_os = "linux")]
     {
-        "/usr/local/cuda/lib64"
+        concat!(env!("CUDA_PATH"), "/lib64")
     }
 }
 
