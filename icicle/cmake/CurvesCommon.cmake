@@ -1,5 +1,5 @@
 function(check_curve)
-  set(SUPPORTED_CURVES bn254;bls12_381;bls12_377;bw6_761;grumpkin)
+  set(SUPPORTED_CURVES bn254;bls12_381;bls12_377;bw6_761;grumpkin;pallas;vesta)
 
   set(IS_CURVE_SUPPORTED FALSE)
   set(I 0)

@@ -7,6 +7,8 @@
 #define BLS12_377 3
 #define BW6_761   4
 #define GRUMPKIN  5
+#define PALLAS    6
+#define VESTA     7
 
 #define BABY_BEAR 1001
 #define STARK_252 1002

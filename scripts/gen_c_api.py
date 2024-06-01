@@ -48,6 +48,26 @@ CURVES_CONFIG = {
         "field_ext.h",
         "ntt_ext.h",
     },
+    "pallas": {
+        "poseidon.h",
+        "poseidon2.h",
+        "curve_g2.h",
+        "msm_g2.h",
+        "vec_ops_ext.h",
+        "field_ext.h",
+        "ntt_ext.h",
+    },
+    "vesta": {
+        "poseidon.h",
+        "poseidon2.h",
+        "curve_g2.h",
+        "msm_g2.h",
+        "ecntt.h",
+        "ntt.h",
+        "vec_ops_ext.h",
+        "field_ext.h",
+        "ntt_ext.h",
+    },
 }
 
 """

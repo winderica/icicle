@@ -30,5 +30,13 @@ namespace curve_config = bw6_761;
 #elif CURVE_ID == GRUMPKIN
 #include "curves/params/grumpkin.cuh"
 namespace curve_config = grumpkin;
+
+#elif CURVE_ID == PALLAS
+#include "curves/params/pallas.cuh"
+namespace curve_config = pallas;
+
+#elif CURVE_ID == VESTA
+#include "curves/params/vesta.cuh"
+namespace curve_config = vesta;
 #endif
 #endif
