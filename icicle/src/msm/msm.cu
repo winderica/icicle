@@ -160,6 +160,7 @@ namespace msm {
       const S* scalars,
       unsigned nof_scalars,
       unsigned points_size,
+      unsigned start,
       unsigned msm_size,
       unsigned nof_bms,
       unsigned bm_bitsize,
@@ -188,7 +189,7 @@ namespace msm {
           buckets_indices[current_index] = 0; // will be skipped
         }
         point_indices[current_index] =
-          tid % points_size + points_size * precomputed_index; // the point index is saved for later
+          tid % points_size + start + points_size * precomputed_index; // the point index is saved for later
       }
     }
 
@@ -380,6 +381,8 @@ namespace msm {
       const S* scalars,
       const A* points,
       unsigned batch_size,      // number of MSMs to compute
+      unsigned start,
+      unsigned end,
       unsigned single_msm_size, // number of elements per MSM (a.k.a N)
       unsigned nof_points,      // number of EC points in 'points' array. Must be either (1) single_msm_size if MSMs are
                                 // sharing points or (2) single_msm_size*batch_size otherwise
@@ -398,11 +401,6 @@ namespace msm {
       CHK_INIT_IF_RETURN();
 
       const unsigned nof_scalars = batch_size * single_msm_size; // assuming scalars not shared between batch elements
-      const bool is_nof_points_valid = ((single_msm_size * batch_size) % nof_points == 0);
-      if (!is_nof_points_valid) {
-        THROW_ICICLE_ERR(
-          IcicleError_t::InvalidArgument, "bucket_method_msm: #points must be divisible by single_msm_size*batch_size");
-      }
 
       const S* d_scalars;
       S* d_allocated_scalars = nullptr;
@@ -446,7 +444,7 @@ namespace msm {
       unsigned NUM_BLOCKS = (nof_scalars + NUM_THREADS - 1) / NUM_THREADS;
 
       split_scalars_kernel<<<NUM_BLOCKS, NUM_THREADS, 0, stream>>>(
-        bucket_indices, point_indices, d_scalars, nof_scalars, nof_points, single_msm_size, total_bms_per_msm,
+        bucket_indices, point_indices, d_scalars, nof_scalars, nof_points, start, single_msm_size, total_bms_per_msm,
         bm_bitsize, c, nof_bms_per_msm);
       nof_points *= precompute_factor;
 
@@ -879,8 +877,13 @@ namespace msm {
 
     unsigned c = (config.c == 0) ? get_optimal_c(msm_size) : config.c;
 
+    if (config.end - config.start != msm_size) {
+      THROW_ICICLE_ERR(
+        IcicleError_t::InvalidArgument, "incorrect size");
+    }
+
     return CHK_STICKY(bucket_method_msm(
-      bitsize, c, scalars, points, config.batch_size, msm_size,
+      bitsize, c, scalars, points, config.batch_size, config.start, config.end, msm_size,
       (config.points_size == 0) ? msm_size : config.points_size, results, config.are_scalars_on_device,
       config.are_scalars_montgomery_form, config.are_points_on_device, config.are_points_montgomery_form,
       config.are_results_on_device, config.is_big_triangle, config.large_bucket_factor, config.precompute_factor,

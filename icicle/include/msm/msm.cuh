@@ -79,6 +79,8 @@ namespace msm {
                                  *   non-blocking and you'd need to synchronize it explicitly by running
                                  *   `cudaStreamSynchronize` or `cudaDeviceSynchronize`. If set to false, the MSM
                                  *   function will block the current CPU thread. */
+    int start;
+    int end;
   };
 
   /**
@@ -103,6 +105,8 @@ namespace msm {
       false, // are_results_on_device
       false, // is_big_triangle
       false, // is_async
+      0,
+      0,
     };
     return config;
   }

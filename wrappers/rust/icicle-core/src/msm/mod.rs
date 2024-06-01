@@ -60,6 +60,9 @@ pub struct MSMConfig<'a> {
     /// and you'd need to synchronize it explicitly by running `cudaStreamSynchronize` or `cudaDeviceSynchronize`.
     /// If set to `false`, the MSM function will block the current CPU thread.
     pub is_async: bool,
+
+    pub start: i32,
+    pub end: i32,
 }
 
 impl<'a> Default for MSMConfig<'a> {
@@ -85,6 +88,8 @@ impl<'a> MSMConfig<'a> {
             are_results_on_device: false,
             is_big_triangle: false,
             is_async: false,
+            start: 0,
+            end: 0,
         }
     }
 }
@@ -143,13 +148,6 @@ pub fn msm<C: Curve + MSM<C>>(
         );
     }
     let points_size = points.len() / (cfg.precompute_factor as usize);
-    if scalars.len() % points_size != 0 {
-        panic!(
-            "Number of points {} does not divide the number of scalars {}",
-            points_size,
-            scalars.len()
-        );
-    }
     if scalars.len() % results.len() != 0 {
         panic!(
             "Number of results {} does not divide the number of scalars {}",
@@ -185,6 +183,7 @@ pub fn msm<C: Curve + MSM<C>>(
     local_cfg.are_scalars_on_device = scalars.is_on_device();
     local_cfg.are_points_on_device = points.is_on_device();
     local_cfg.are_results_on_device = results.is_on_device();
+    local_cfg.end = cfg.start + (scalars.len() / results.len()) as i32;
 
     C::msm_unchecked(scalars, points, &local_cfg, results)
 }
