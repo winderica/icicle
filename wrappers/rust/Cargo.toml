@@ -34,3 +34,13 @@ repository = "https://github.com/ingonyama-zk/icicle"
 [workspace.dependencies]
 icicle-core = { path = "icicle-core" }
 icicle-cuda-runtime = { path = "icicle-cuda-runtime" }
+
+[patch.crates-io]
+ark-ff = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-ec = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-poly = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-std = { git = "https://github.com/arkworks-rs/std/" }
+ark-bn254 = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-grumpkin = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-pallas = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-vesta = { git = "https://github.com/arkworks-rs/algebra/" }
