@@ -26,6 +26,12 @@ namespace field_config = bw6_761;
 #elif FIELD_ID == GRUMPKIN
 #include "fields/snark_fields/grumpkin_scalar.cuh"
 namespace field_config = grumpkin;
+#elif FIELD_ID == PALLAS
+#include "fields/snark_fields/pallas_scalar.cuh"
+namespace field_config = pallas;
+#elif FIELD_ID == VESTA
+#include "fields/snark_fields/vesta_scalar.cuh"
+namespace field_config = vesta;
 
 #elif FIELD_ID == BABY_BEAR
 #include "fields/stark_fields/babybear.cuh"

@@ -17,6 +17,12 @@ using namespace poseidon_constants_bw6_761;
 #elif FIELD_ID == GRUMPKIN
 #include "poseidon/constants/grumpkin_poseidon.h"
 using namespace poseidon_constants_grumpkin;
+#elif FIELD_ID == PALLAS
+#include "poseidon/constants/pallas_poseidon.h"
+using namespace poseidon_constants_pallas;
+#elif FIELD_ID == VESTA
+#include "poseidon/constants/vesta_poseidon.h"
+using namespace poseidon_constants_vesta;
 #endif
 
 namespace poseidon {
