@@ -16,8 +16,36 @@
 #include "poseidon/tree/merkle.cuh"
 #include "poseidon2/poseidon2.cuh"
 
-extern "C" cudaError_t babybear_extension_ntt_cuda(
-  const babybear::extension_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<babybear::scalar_t>& config, babybear::extension_t* output);
+extern "C" cudaError_t babybear_mul_cuda(
+  babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
+
+extern "C" cudaError_t babybear_add_cuda(
+  babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
+
+extern "C" cudaError_t babybear_sub_cuda(
+  babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
+
+extern "C" cudaError_t babybear_mul_mat_cuda(
+  babybear::scalar_t* vec_a, babybear::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
+
+extern "C" cudaError_t babybear_transpose_matrix_cuda(
+  const babybear::scalar_t* input,
+  uint32_t row_size,
+  uint32_t column_size,
+  babybear::scalar_t* output,
+  device_context::DeviceContext& ctx,
+  bool on_device,
+  bool is_async);
+
+extern "C" void babybear_extension_generate_scalars(babybear::extension_t* scalars, int size);
+
+extern "C" cudaError_t babybear_extension_scalar_convert_montgomery(
+  babybear::extension_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
+
+extern "C" void babybear_generate_scalars(babybear::scalar_t* scalars, int size);
+
+extern "C" cudaError_t babybear_scalar_convert_montgomery(
+  babybear::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
 extern "C" cudaError_t babybear_create_poseidon2_constants_cuda(
   int width,
@@ -50,29 +78,6 @@ extern "C" cudaError_t babybear_release_poseidon2_constants_cuda(
   poseidon2::Poseidon2Constants<babybear::scalar_t>* constants,
   device_context::DeviceContext& ctx);
 
-extern "C" cudaError_t babybear_mul_cuda(
-  babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
-
-extern "C" cudaError_t babybear_add_cuda(
-  babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
-
-extern "C" cudaError_t babybear_sub_cuda(
-  babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
-
-extern "C" cudaError_t babybear_transpose_matrix_cuda(
-  const babybear::scalar_t* input,
-  uint32_t row_size,
-  uint32_t column_size,
-  babybear::scalar_t* output,
-  device_context::DeviceContext& ctx,
-  bool on_device,
-  bool is_async);
-
-extern "C" void babybear_generate_scalars(babybear::scalar_t* scalars, int size);
-
-extern "C" cudaError_t babybear_scalar_convert_montgomery(
-  babybear::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
-
 extern "C" cudaError_t babybear_initialize_domain(
   babybear::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
 
@@ -80,11 +85,6 @@ extern "C" cudaError_t babybear_ntt_cuda(
   const babybear::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<babybear::scalar_t>& config, babybear::scalar_t* output);
 
 extern "C" cudaError_t babybear_release_domain(device_context::DeviceContext& ctx);
-
-extern "C" void babybear_extension_generate_scalars(babybear::extension_t* scalars, int size);
-
-extern "C" cudaError_t babybear_extension_scalar_convert_montgomery(
-  babybear::extension_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
 extern "C" cudaError_t babybear_extension_mul_cuda(
   babybear::extension_t* vec_a, babybear::extension_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::extension_t* result);
@@ -95,6 +95,9 @@ extern "C" cudaError_t babybear_extension_add_cuda(
 extern "C" cudaError_t babybear_extension_sub_cuda(
   babybear::extension_t* vec_a, babybear::extension_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::extension_t* result);
 
+extern "C" cudaError_t babybear_extension_mul_mat_cuda(
+  babybear::extension_t* vec_a, babybear::extension_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, babybear::extension_t* result);
+
 extern "C" cudaError_t babybear_extension_transpose_matrix_cuda(
   const babybear::extension_t* input,
   uint32_t row_size,
@@ -103,5 +106,8 @@ extern "C" cudaError_t babybear_extension_transpose_matrix_cuda(
   device_context::DeviceContext& ctx,
   bool on_device,
   bool is_async);
+
+extern "C" cudaError_t babybear_extension_ntt_cuda(
+  const babybear::extension_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<babybear::scalar_t>& config, babybear::extension_t* output);
 
 #endif
