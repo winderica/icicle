@@ -44,6 +44,9 @@ extern "C" cudaError_t stark252_accumulate_cuda(
 extern "C" cudaError_t stark252_sub_cuda(
   stark252::scalar_t* vec_a, stark252::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, stark252::scalar_t* result);
 
+extern "C" cudaError_t stark252_mul_mat_cuda(
+  stark252::scalar_t* vec_a, stark252::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, stark252::scalar_t* result);
+
 extern "C" cudaError_t stark252_transpose_matrix_cuda(
   const stark252::scalar_t* input,
   uint32_t row_size,
