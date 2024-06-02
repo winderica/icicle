@@ -51,7 +51,7 @@ extern "C" cudaError_t grumpkin_sub_cuda(
   grumpkin::scalar_t* vec_a, grumpkin::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, grumpkin::scalar_t* result);
 
 extern "C" cudaError_t grumpkin_mul_mat_cuda(
-  grumpkin::scalar_t* vec_a, grumpkin::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, grumpkin::scalar_t* result);
+  grumpkin::scalar_t* vec_a, grumpkin::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, grumpkin::scalar_t* result);
 
 extern "C" cudaError_t grumpkin_transpose_matrix_cuda(
   const grumpkin::scalar_t* input,

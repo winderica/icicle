@@ -118,7 +118,7 @@ namespace vec_ops {
   }
 
   template <typename E>
-  cudaError_t mat_op(const E* vec, const E* mat, const int* row_ptr, const int* col_idx, int n_rows, VecOpsConfig& config, E* result)
+  cudaError_t mat_op(const E* vec, const E* mat, const int* row_ptr, const int* col_idx, int n_rows, int n_cols, VecOpsConfig& config, E* result)
   {
     CHK_INIT_IF_RETURN();
 
@@ -126,15 +126,15 @@ namespace vec_ops {
 
     // Set the grid and block dimensions
     int num_threads = MAX_THREADS_PER_BLOCK;
-    int num_blocks = (n + num_threads - 1) / num_threads;
+    int num_blocks = (n_rows + num_threads - 1) / num_threads;
 
     E *d_result, *d_alloc_vec_a, *d_alloc_mat;
     int *d_alloc_row_ptr, *d_alloc_col_idx;
     const E *d_vec_a, *d_mat;
     const int *d_row_ptr, *d_col_idx;
     if (!config.is_a_on_device) {
-      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_vec_a, n * sizeof(E), config.ctx.stream));
-      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_vec_a, vec, n * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
+      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_vec_a, n_cols * sizeof(E), config.ctx.stream));
+      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_vec_a, vec, n_cols * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
       d_vec_a = d_alloc_vec_a;
     } else {
       d_vec_a = vec;
@@ -144,8 +144,8 @@ namespace vec_ops {
       CHK_IF_RETURN(cudaMallocAsync(&d_alloc_mat, n * sizeof(E), config.ctx.stream));
       CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_mat, mat, n * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
       d_mat = d_alloc_mat;
-      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_row_ptr, n_rows * sizeof(int), config.ctx.stream));
-      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_row_ptr, row_ptr, n_rows * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));
+      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_row_ptr, (n_rows + 1) * sizeof(int), config.ctx.stream));
+      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_row_ptr, row_ptr, (n_rows + 1) * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));
       d_row_ptr = d_alloc_row_ptr;
       CHK_IF_RETURN(cudaMallocAsync(&d_alloc_col_idx, n * sizeof(int), config.ctx.stream));
       CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_col_idx, mat, n * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));

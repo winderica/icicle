@@ -81,7 +81,7 @@ extern "C" cudaError_t bls12_381_sub_cuda(
   bls12_381::scalar_t* vec_a, bls12_381::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, bls12_381::scalar_t* result);
 
 extern "C" cudaError_t bls12_381_mul_mat_cuda(
-  bls12_381::scalar_t* vec_a, bls12_381::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, bls12_381::scalar_t* result);
+  bls12_381::scalar_t* vec_a, bls12_381::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, bls12_381::scalar_t* result);
 
 extern "C" cudaError_t bls12_381_transpose_matrix_cuda(
   const bls12_381::scalar_t* input,

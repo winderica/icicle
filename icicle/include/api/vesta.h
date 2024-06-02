@@ -49,7 +49,7 @@ extern "C" cudaError_t vesta_sub_cuda(
   vesta::scalar_t* vec_a, vesta::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, vesta::scalar_t* result);
 
 extern "C" cudaError_t vesta_mul_mat_cuda(
-  vesta::scalar_t* vec_a, vesta::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, vesta::scalar_t* result);
+  vesta::scalar_t* vec_a, vesta::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, vesta::scalar_t* result);
 
 extern "C" cudaError_t vesta_transpose_matrix_cuda(
   const vesta::scalar_t* input,

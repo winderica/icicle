@@ -81,7 +81,7 @@ extern "C" cudaError_t bw6_761_sub_cuda(
   bw6_761::scalar_t* vec_a, bw6_761::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, bw6_761::scalar_t* result);
 
 extern "C" cudaError_t bw6_761_mul_mat_cuda(
-  bw6_761::scalar_t* vec_a, bw6_761::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, bw6_761::scalar_t* result);
+  bw6_761::scalar_t* vec_a, bw6_761::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, bw6_761::scalar_t* result);
 
 extern "C" cudaError_t bw6_761_transpose_matrix_cuda(
   const bw6_761::scalar_t* input,

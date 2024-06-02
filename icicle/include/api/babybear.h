@@ -26,7 +26,7 @@ extern "C" cudaError_t babybear_sub_cuda(
   babybear::scalar_t* vec_a, babybear::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
 
 extern "C" cudaError_t babybear_mul_mat_cuda(
-  babybear::scalar_t* vec_a, babybear::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
+  babybear::scalar_t* vec_a, babybear::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, babybear::scalar_t* result);
 
 extern "C" cudaError_t babybear_transpose_matrix_cuda(
   const babybear::scalar_t* input,
@@ -96,7 +96,7 @@ extern "C" cudaError_t babybear_extension_sub_cuda(
   babybear::extension_t* vec_a, babybear::extension_t* vec_b, int n, vec_ops::VecOpsConfig& config, babybear::extension_t* result);
 
 extern "C" cudaError_t babybear_extension_mul_mat_cuda(
-  babybear::extension_t* vec_a, babybear::extension_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, babybear::extension_t* result);
+  babybear::extension_t* vec_a, babybear::extension_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, babybear::extension_t* result);
 
 extern "C" cudaError_t babybear_extension_transpose_matrix_cuda(
   const babybear::extension_t* input,
