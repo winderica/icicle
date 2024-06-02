@@ -153,70 +153,70 @@ namespace vec_ops {
     return CHK_LAST();
   }
 
-    template <typename E>
-    cudaError_t mat_op(const E* vec, const E* mat, const int* row_ptr, const int* col_idx, int n_rows, VecOpsConfig& config, E* result)
-    {
-      CHK_INIT_IF_RETURN();
+  template <typename E>
+  cudaError_t mat_op(const E* vec, const E* mat, const int* row_ptr, const int* col_idx, int n_rows, int n_cols, VecOpsConfig& config, E* result)
+  {
+    CHK_INIT_IF_RETURN();
 
-      int n = row_ptr[n_rows];
+    int n = row_ptr[n_rows];
 
-      // Set the grid and block dimensions
-      int num_threads = MAX_THREADS_PER_BLOCK;
-      int num_blocks = (n + num_threads - 1) / num_threads;
+    // Set the grid and block dimensions
+    int num_threads = MAX_THREADS_PER_BLOCK;
+    int num_blocks = (n_rows + num_threads - 1) / num_threads;
 
-      E *d_result, *d_alloc_vec_a, *d_alloc_mat;
-      int *d_alloc_row_ptr, *d_alloc_col_idx;
-      const E *d_vec_a, *d_mat;
-      const int *d_row_ptr, *d_col_idx;
-      if (!config.is_a_on_device) {
-        CHK_IF_RETURN(cudaMallocAsync(&d_alloc_vec_a, n * sizeof(E), config.ctx.stream));
-        CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_vec_a, vec, n * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
-        d_vec_a = d_alloc_vec_a;
-      } else {
-        d_vec_a = vec;
-      }
-
-      if (!config.is_b_on_device) {
-        CHK_IF_RETURN(cudaMallocAsync(&d_alloc_mat, n * sizeof(E), config.ctx.stream));
-        CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_mat, mat, n * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
-        d_mat = d_alloc_mat;
-        CHK_IF_RETURN(cudaMallocAsync(&d_alloc_row_ptr, n_rows * sizeof(int), config.ctx.stream));
-        CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_row_ptr, row_ptr, n_rows * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));
-        d_row_ptr = d_alloc_row_ptr;
-        CHK_IF_RETURN(cudaMallocAsync(&d_alloc_col_idx, n * sizeof(int), config.ctx.stream));
-        CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_col_idx, mat, n * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));
-        d_col_idx = d_alloc_col_idx;
-      } else {
-        d_mat = mat;
-        d_row_ptr = row_ptr;
-        d_col_idx = col_idx;
-      }
-
-      if (!config.is_result_on_device) {
-        CHK_IF_RETURN(cudaMallocAsync(&d_result, n_rows * sizeof(E), config.ctx.stream));
-      } else {
-        d_result = result;
-      }
-
-      // Call the kernel to perform element-wise operation
-      mul_mat_kernel<<<num_blocks, num_threads, 0, config.ctx.stream>>>(d_vec_a, d_mat, d_row_ptr, d_col_idx, n_rows, d_result);
-
-      if (!config.is_a_on_device) { CHK_IF_RETURN(cudaFreeAsync(d_alloc_vec_a, config.ctx.stream)); }
-      if (!config.is_b_on_device) {
-        CHK_IF_RETURN(cudaFreeAsync(d_alloc_mat, config.ctx.stream));
-        CHK_IF_RETURN(cudaFreeAsync(d_alloc_row_ptr, config.ctx.stream));
-        CHK_IF_RETURN(cudaFreeAsync(d_alloc_col_idx, config.ctx.stream));
-      }
-
-      if (!config.is_result_on_device) {
-        CHK_IF_RETURN(cudaMemcpyAsync(result, d_result, n_rows * sizeof(E), cudaMemcpyDeviceToHost, config.ctx.stream));
-        CHK_IF_RETURN(cudaFreeAsync(d_result, config.ctx.stream));
-      }
-
-      if (!config.is_async) return CHK_STICKY(cudaStreamSynchronize(config.ctx.stream));
-
-      return CHK_LAST();
+    E *d_result, *d_alloc_vec_a, *d_alloc_mat;
+    int *d_alloc_row_ptr, *d_alloc_col_idx;
+    const E *d_vec_a, *d_mat;
+    const int *d_row_ptr, *d_col_idx;
+    if (!config.is_a_on_device) {
+      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_vec_a, n_cols * sizeof(E), config.ctx.stream));
+      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_vec_a, vec, n_cols * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
+      d_vec_a = d_alloc_vec_a;
+    } else {
+      d_vec_a = vec;
     }
+
+    if (!config.is_b_on_device) {
+      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_mat, n * sizeof(E), config.ctx.stream));
+      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_mat, mat, n * sizeof(E), cudaMemcpyHostToDevice, config.ctx.stream));
+      d_mat = d_alloc_mat;
+      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_row_ptr, (n_rows + 1) * sizeof(int), config.ctx.stream));
+      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_row_ptr, row_ptr, (n_rows + 1) * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));
+      d_row_ptr = d_alloc_row_ptr;
+      CHK_IF_RETURN(cudaMallocAsync(&d_alloc_col_idx, n * sizeof(int), config.ctx.stream));
+      CHK_IF_RETURN(cudaMemcpyAsync(d_alloc_col_idx, mat, n * sizeof(int), cudaMemcpyHostToDevice, config.ctx.stream));
+      d_col_idx = d_alloc_col_idx;
+    } else {
+      d_mat = mat;
+      d_row_ptr = row_ptr;
+      d_col_idx = col_idx;
+    }
+
+    if (!config.is_result_on_device) {
+      CHK_IF_RETURN(cudaMallocAsync(&d_result, n_rows * sizeof(E), config.ctx.stream));
+    } else {
+      d_result = result;
+    }
+
+    // Call the kernel to perform element-wise operation
+    mul_mat_kernel<<<num_blocks, num_threads, 0, config.ctx.stream>>>(d_vec_a, d_mat, d_row_ptr, d_col_idx, n_rows, d_result);
+
+    if (!config.is_a_on_device) { CHK_IF_RETURN(cudaFreeAsync(d_alloc_vec_a, config.ctx.stream)); }
+    if (!config.is_b_on_device) {
+      CHK_IF_RETURN(cudaFreeAsync(d_alloc_mat, config.ctx.stream));
+      CHK_IF_RETURN(cudaFreeAsync(d_alloc_row_ptr, config.ctx.stream));
+      CHK_IF_RETURN(cudaFreeAsync(d_alloc_col_idx, config.ctx.stream));
+    }
+
+    if (!config.is_result_on_device) {
+      CHK_IF_RETURN(cudaMemcpyAsync(result, d_result, n_rows * sizeof(E), cudaMemcpyDeviceToHost, config.ctx.stream));
+      CHK_IF_RETURN(cudaFreeAsync(d_result, config.ctx.stream));
+    }
+
+    if (!config.is_async) return CHK_STICKY(cudaStreamSynchronize(config.ctx.stream));
+
+    return CHK_LAST();
+  }
 
   template <typename E>
   cudaError_t mul(E* vec_a, const E* vec_b, int n, VecOpsConfig& config, E* result)

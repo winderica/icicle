@@ -103,6 +103,15 @@ pub trait VecOps<F> {
         cfg: &VecOpsConfig,
     ) -> IcicleResult<()>;
 
+    fn mul_mat(
+        vec: &(impl HostOrDeviceSlice<F> + ?Sized),
+        mat: &(impl HostOrDeviceSlice<F> + ?Sized),
+        row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
+        cfg: &VecOpsConfig,
+    ) -> IcicleResult<()>;
+
     fn transpose(
         input: &(impl HostOrDeviceSlice<F> + ?Sized),
         row_size: u32,
@@ -254,6 +263,45 @@ where
     <<F as FieldImpl>::Config as VecOps<F>>::mul(a, b, result, &cfg)
 }
 
+pub fn mul_mat<F>(
+    vec: &(impl HostOrDeviceSlice<F> + ?Sized),
+    mat: &(impl HostOrDeviceSlice<F> + ?Sized),
+    row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
+    cfg: &VecOpsConfig,
+) -> IcicleResult<()>
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
+{
+    let cfg = {
+        let ctx_device_id = cfg
+            .ctx
+            .device_id;
+        if let Some(device_id) = vec.device_id() {
+            assert_eq!(device_id, ctx_device_id, "Device ids in a and context are different");
+        }
+        if let Some(device_id) = mat.device_id() {
+            assert_eq!(device_id, ctx_device_id, "Device ids in b and context are different");
+        }
+        if let Some(device_id) = result.device_id() {
+            assert_eq!(
+                device_id, ctx_device_id,
+                "Device ids in result and context are different"
+            );
+        }
+        check_device(ctx_device_id);
+
+        let mut res_cfg = cfg.clone();
+        res_cfg.is_a_on_device = vec.is_on_device();
+        res_cfg.is_b_on_device = mat.is_on_device();
+        res_cfg.is_result_on_device = result.is_on_device();
+        res_cfg
+    };
+    <<F as FieldImpl>::Config as VecOps<F>>::mul_mat(vec, mat, row_ptr, col_idx, result, &cfg)
+}
+
 pub fn transpose_matrix<F>(
     input: &(impl HostOrDeviceSlice<F> + ?Sized),
     row_size: u32,
@@ -344,6 +392,18 @@ macro_rules! impl_vec_ops_field {
                     result: *mut $field,
                 ) -> CudaError;
 
+                #[link_name = concat!($field_prefix, "_mul_mat_cuda")]
+                pub(crate) fn mul_mat_cuda(
+                    vec: *const $field,
+                    mat: *const $field,
+                    row_ptr: *const i32,
+                    col_idx: *const i32,
+                    n_rows: i32,
+                    n_cols: i32,
+                    cfg: *const VecOpsConfig,
+                    result: *mut $field,
+                ) -> CudaError;
+
                 #[link_name = concat!($field_prefix, "_transpose_matrix_cuda")]
                 pub(crate) fn transpose_cuda(
                     input: *const $field,
@@ -429,6 +489,29 @@ macro_rules! impl_vec_ops_field {
                         a.as_ptr(),
                         b.as_ptr(),
                         a.len() as u32,
+                        cfg as *const VecOpsConfig,
+                        result.as_mut_ptr(),
+                    )
+                    .wrap()
+                }
+            }
+
+            fn mul_mat(
+                vec: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                mat: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+                col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+                result: &mut (impl HostOrDeviceSlice<$field> + ?Sized),
+                cfg: &VecOpsConfig,
+            ) -> IcicleResult<()> {
+                unsafe {
+                    $field_prefix_ident::mul_mat_cuda(
+                        vec.as_ptr(),
+                        mat.as_ptr(),
+                        row_ptr.as_ptr(),
+                        col_idx.as_ptr(),
+                        (row_ptr.len() - 1) as i32,
+                        vec.len() as i32,
                         cfg as *const VecOpsConfig,
                         result.as_mut_ptr(),
                     )

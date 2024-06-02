@@ -52,9 +52,9 @@ namespace vec_ops {
   }
 
   extern "C" cudaError_t
-  CONCAT_EXPAND(FIELD, extension_mul_mat_cuda)(extension_t* vec_a, extension_t* mat, int* row_ptr, int* col_idx, int n_rows, VecOpsConfig& config, extension_t* result)
+  CONCAT_EXPAND(FIELD, extension_mul_mat_cuda)(extension_t* vec_a, extension_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, VecOpsConfig& config, extension_t* result)
   {
-    return mat_op<extension_t>(vec_a, mat, row_ptr, col_idx, n_rows, config, result);
+    return mat_op<extension_t>(vec_a, mat, row_ptr, col_idx, n_rows, n_cols, config, result);
   }
 
   /**
