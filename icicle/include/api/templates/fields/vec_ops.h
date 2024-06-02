@@ -11,7 +11,7 @@ extern "C" cudaError_t ${FIELD}_sub_cuda(
   ${FIELD}::scalar_t* vec_a, ${FIELD}::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, ${FIELD}::scalar_t* result);
 
 extern "C" cudaError_t ${FIELD}_mul_mat_cuda(
-  ${FIELD}::scalar_t* vec_a, ${FIELD}::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, vec_ops::VecOpsConfig& config, ${FIELD}::scalar_t* result);
+  ${FIELD}::scalar_t* vec_a, ${FIELD}::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, ${FIELD}::scalar_t* result);
 
 extern "C" cudaError_t ${FIELD}_transpose_matrix_cuda(
   const ${FIELD}::scalar_t* input,
