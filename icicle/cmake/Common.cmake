@@ -16,8 +16,8 @@ function(set_gpu_env)
     # each additional architecture increases the compilation time and output file size
     if(DEFINED CUDA_ARCH) # user defined arch takes priority
         set(CMAKE_CUDA_ARCHITECTURES ${CUDA_ARCH} PARENT_SCOPE)
-    elseif(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24.0") # otherwise, use native to detect GPU arch
-        set(CMAKE_CUDA_ARCHITECTURES native PARENT_SCOPE)
+    # elseif(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.24.0") # otherwise, use native to detect GPU arch
+        # set(CMAKE_CUDA_ARCHITECTURES native PARENT_SCOPE)
     else()
         find_program(_nvidia_smi "nvidia-smi")
 
