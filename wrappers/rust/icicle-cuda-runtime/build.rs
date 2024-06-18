@@ -2,15 +2,18 @@
 use std::fs;
 use std::path::PathBuf;
 
-fn cuda_include_path() -> &'static str {
+fn cuda_include_path() -> String {
     #[cfg(target_os = "windows")]
     {
-        concat!(env!("CUDA_PATH"), "\\include")
+        concat!(env!("CUDA_PATH"), "\\include").into()
     }
 
     #[cfg(target_os = "linux")]
     {
-        concat!(env!("CUDA_PATH"), "/include")
+        match option_env!("CUDA_PATH") {
+            Some(v) => format!("{}/include", v),
+            None => "/usr/local/cuda/include".into(),
+        }
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
@@ -19,15 +22,18 @@ fn cuda_include_path() -> &'static str {
     }
 }
 
-fn cuda_lib_path() -> &'static str {
+fn cuda_lib_path() -> String {
     #[cfg(target_os = "windows")]
     {
-        concat!(env!("CUDA_PATH"), "\\lib\\x64")
+        concat!(env!("CUDA_PATH"), "\\lib\\x64").into()
     }
 
     #[cfg(target_os = "linux")]
     {
-        concat!(env!("CUDA_PATH"), "/lib64")
+        match option_env!("CUDA_PATH") {
+            Some(v) => format!("{}/lib64", v),
+            None => "/usr/local/cuda/lib64".into(),
+        }
     }
 
     #[cfg(not(any(target_os = "windows", target_os = "linux")))]
