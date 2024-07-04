@@ -55,6 +55,33 @@ extern "C" cudaError_t pallas_sub_cuda(
 extern "C" cudaError_t pallas_mul_mat_cuda(
   pallas::scalar_t* vec_a, pallas::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, pallas::scalar_t* result);
 
+extern "C" cudaError_t pallas_prepare_matrix_cuda(
+  pallas::scalar_t* mat,
+  int* row_ptr,
+  int* col_idx,
+  int n_rows,
+  device_context::DeviceContext& ctx,
+  pallas::scalar_t* output_mat,
+  int* output_row_ptr,
+  int* output_col_idx);
+
+extern "C" cudaError_t pallas_compute_t_cuda(
+  pallas::scalar_t* mat_a,
+  const int* row_ptr_a,
+  const int* col_idx_a,
+  pallas::scalar_t* mat_b,
+  const int* row_ptr_b,
+  const int* col_idx_b,
+  pallas::scalar_t* mat_c,
+  const int* row_ptr_c,
+  const int* col_idx_c,
+  pallas::scalar_t* z1,
+  pallas::scalar_t* z2,
+  int n_rows,
+  int n_cols,
+  device_context::DeviceContext& ctx,
+  pallas::scalar_t* result);
+
 extern "C" cudaError_t pallas_transpose_matrix_cuda(
   const pallas::scalar_t* input,
   uint32_t row_size,

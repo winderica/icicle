@@ -1,7 +1,7 @@
 use icicle_cuda_runtime::device::check_device;
 use icicle_cuda_runtime::{
     device_context::{DeviceContext, DEFAULT_DEVICE_ID},
-    memory::HostOrDeviceSlice,
+    memory::{HostOrDeviceSlice, DeviceSlice},
 };
 
 use crate::{error::IcicleResult, traits::FieldImpl};
@@ -112,6 +112,32 @@ pub trait VecOps<F> {
         cfg: &VecOpsConfig,
     ) -> IcicleResult<()>;
 
+    fn prepare_matrix(
+        mat: &(impl HostOrDeviceSlice<F> + ?Sized),
+        row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        ctx: &DeviceContext,
+        output_mat: &mut DeviceSlice<F>,
+        output_row_ptr: &mut DeviceSlice<i32>,
+        output_col_idx: &mut DeviceSlice<i32>,
+    ) -> IcicleResult<()>;
+
+    fn compute_t(
+        mat_a: &(impl HostOrDeviceSlice<F> + ?Sized),
+        row_ptr_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        mat_b: &(impl HostOrDeviceSlice<F> + ?Sized),
+        row_ptr_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        mat_c: &(impl HostOrDeviceSlice<F> + ?Sized),
+        row_ptr_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        z1: &(impl HostOrDeviceSlice<F> + ?Sized),
+        z2: &(impl HostOrDeviceSlice<F> + ?Sized),
+        ctx: &DeviceContext,
+        result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
+    ) -> IcicleResult<()>;
+
     fn transpose(
         input: &(impl HostOrDeviceSlice<F> + ?Sized),
         row_size: u32,
@@ -214,9 +240,9 @@ pub fn add_scalars<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-where
-    F: FieldImpl,
-    <F as FieldImpl>::Config: VecOps<F>,
+    where
+        F: FieldImpl,
+        <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = check_vec_ops_args(a, b, result, cfg);
     <<F as FieldImpl>::Config as VecOps<F>>::add(a, b, result, &cfg)
@@ -241,9 +267,9 @@ pub fn sub_scalars<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-where
-    F: FieldImpl,
-    <F as FieldImpl>::Config: VecOps<F>,
+    where
+        F: FieldImpl,
+        <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = check_vec_ops_args(a, b, result, cfg);
     <<F as FieldImpl>::Config as VecOps<F>>::sub(a, b, result, &cfg)
@@ -255,9 +281,9 @@ pub fn mul_scalars<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-where
-    F: FieldImpl,
-    <F as FieldImpl>::Config: VecOps<F>,
+    where
+        F: FieldImpl,
+        <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = check_vec_ops_args(a, b, result, cfg);
     <<F as FieldImpl>::Config as VecOps<F>>::mul(a, b, result, &cfg)
@@ -271,9 +297,9 @@ pub fn mul_mat<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-where
-    F: FieldImpl,
-    <F as FieldImpl>::Config: VecOps<F>,
+    where
+        F: FieldImpl,
+        <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = {
         let ctx_device_id = cfg
@@ -302,6 +328,53 @@ where
     <<F as FieldImpl>::Config as VecOps<F>>::mul_mat(vec, mat, row_ptr, col_idx, result, &cfg)
 }
 
+
+pub fn prepare_matrix<F>(
+    mat: &(impl HostOrDeviceSlice<F> + ?Sized),
+    row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    ctx: &DeviceContext,
+    output_mat: &mut DeviceSlice<F>,
+    output_row_ptr: &mut DeviceSlice<i32>,
+    output_col_idx: &mut DeviceSlice<i32>,
+) -> IcicleResult<()> where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
+{
+    <<F as FieldImpl>::Config as VecOps<F>>::prepare_matrix(
+        mat,
+        row_ptr,
+        col_idx,
+        ctx,
+        output_mat,
+        output_row_ptr,
+        output_col_idx,
+    )
+}
+
+pub fn compute_t<F>(
+    mat_a: &(impl HostOrDeviceSlice<F> + ?Sized),
+    row_ptr_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    col_idx_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    mat_b: &(impl HostOrDeviceSlice<F> + ?Sized),
+    row_ptr_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    col_idx_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    mat_c: &(impl HostOrDeviceSlice<F> + ?Sized),
+    row_ptr_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    col_idx_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    z1: &(impl HostOrDeviceSlice<F> + ?Sized),
+    z2: &(impl HostOrDeviceSlice<F> + ?Sized),
+    ctx: &DeviceContext,
+    result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
+) -> IcicleResult<()> where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
+{
+    <<F as FieldImpl>::Config as VecOps<F>>::compute_t(
+        mat_a, row_ptr_a, col_idx_a, mat_b, row_ptr_b, col_idx_b, mat_c, row_ptr_c, col_idx_c, z1, z2, ctx, result,
+    )
+}
+
 pub fn transpose_matrix<F>(
     input: &(impl HostOrDeviceSlice<F> + ?Sized),
     row_size: u32,
@@ -311,9 +384,9 @@ pub fn transpose_matrix<F>(
     on_device: bool,
     is_async: bool,
 ) -> IcicleResult<()>
-where
-    F: FieldImpl,
-    <F as FieldImpl>::Config: VecOps<F>,
+    where
+        F: FieldImpl,
+        <F as FieldImpl>::Config: VecOps<F>,
 {
     <<F as FieldImpl>::Config as VecOps<F>>::transpose(input, row_size, column_size, output, ctx, on_device, is_async)
 }
@@ -402,6 +475,37 @@ macro_rules! impl_vec_ops_field {
                     n_cols: i32,
                     cfg: *const VecOpsConfig,
                     result: *mut $field,
+                ) -> CudaError;
+
+                #[link_name = concat!($field_prefix, "_prepare_matrix_cuda")]
+                pub(crate) fn prepare_matrix_cuda(
+                    mat: *const $field,
+                    row_ptr: *const i32,
+                    col_idx: *const i32,
+                    n_rows: i32,
+                    ctx: *const DeviceContext,
+                    output_mat: *const $field,
+                    output_row_ptr: *const i32,
+                    output_col_idx: *const i32,
+                ) -> CudaError;
+
+                #[link_name = concat!($field_prefix, "_compute_t_cuda")]
+                pub(crate) fn compute_t_cuda(
+                    mat_a: *const $field,
+                    row_ptr_a: *const i32,
+                    col_idx_a: *const i32,
+                    mat_b: *const $field,
+                    row_ptr_b: *const i32,
+                    col_idx_b: *const i32,
+                    mat_c: *const $field,
+                    row_ptr_c: *const i32,
+                    col_idx_c: *const i32,
+                    z1: *const $field,
+                    z2: *const $field,
+                    n_rows: i32,
+                    n_cols: i32,
+                    ctx: *const DeviceContext,
+                    result: *const $field,
                 ) -> CudaError;
 
                 #[link_name = concat!($field_prefix, "_transpose_matrix_cuda")]
@@ -518,6 +622,69 @@ macro_rules! impl_vec_ops_field {
                     .wrap()
                 }
             }
+
+
+    fn prepare_matrix(
+        mat:  &(impl HostOrDeviceSlice<$field> + ?Sized),
+        row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        ctx: &DeviceContext,
+        output_mat: &mut icicle_cuda_runtime::memory::DeviceSlice<$field>,
+        output_row_ptr: &mut icicle_cuda_runtime::memory::DeviceSlice<i32>,
+        output_col_idx: &mut icicle_cuda_runtime::memory::DeviceSlice<i32>,
+    ) -> IcicleResult<()> {
+unsafe {
+                    $field_prefix_ident::prepare_matrix_cuda(
+                        mat.as_ptr(),
+                        row_ptr.as_ptr(),
+                        col_idx.as_ptr(),
+                        (row_ptr.len() - 1) as i32,
+                        ctx as *const DeviceContext,
+                        output_mat.as_mut_ptr(),
+                        output_row_ptr.as_mut_ptr(),
+                        output_col_idx.as_mut_ptr(),
+                    )
+                    .wrap()
+                }
+            }
+
+    fn compute_t(
+        mat_a:  &(impl HostOrDeviceSlice<$field> + ?Sized),
+        row_ptr_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        mat_b:  &(impl HostOrDeviceSlice<$field> + ?Sized),
+        row_ptr_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        mat_c:  &(impl HostOrDeviceSlice<$field> + ?Sized),
+        row_ptr_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        col_idx_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        z1:  &(impl HostOrDeviceSlice<$field> + ?Sized),
+        z2:  &(impl HostOrDeviceSlice<$field> + ?Sized),
+        ctx: &DeviceContext,
+        result:  &mut (impl HostOrDeviceSlice<$field> + ?Sized),
+    ) -> IcicleResult<()> {
+                unsafe {
+                    $field_prefix_ident::compute_t_cuda(
+                        mat_a.as_ptr(),
+                        row_ptr_a.as_ptr(),
+                        col_idx_a.as_ptr(),
+                        mat_b.as_ptr(),
+                        row_ptr_b.as_ptr(),
+                        col_idx_b.as_ptr(),
+                        mat_c.as_ptr(),
+                        row_ptr_c.as_ptr(),
+                        col_idx_c.as_ptr(),
+                        z1.as_ptr(),
+                        z2.as_ptr(),
+                        (row_ptr_a.len() - 1) as i32,
+                        z1.len() as i32,
+                        ctx as *const DeviceContext,
+                        result.as_mut_ptr(),
+                    )
+                    .wrap()
+                }
+            }
+
 
             fn transpose(
                 input: &(impl HostOrDeviceSlice<$field> + ?Sized),
