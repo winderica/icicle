@@ -11,7 +11,7 @@ repository.workspace = true
 [dependencies]
 
 icicle-cuda-runtime = { workspace = true }
-ark-ff = { git = "https://github.com/arkworks-rs/algebra", optional = true }
+ark-ff = { git = "https://github.com/arkworks-rs/algebra", optional = true, features = ["asm"] }
 ark-ec = { git = "https://github.com/arkworks-rs/algebra", optional = true, features = ["parallel"] }
 ark-poly = { git = "https://github.com/arkworks-rs/algebra", optional = true }
 ark-std = { git = "https://github.com/arkworks-rs/std", optional = true }
