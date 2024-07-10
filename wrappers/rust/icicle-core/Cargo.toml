@@ -13,7 +13,7 @@ repository.workspace = true
 icicle-cuda-runtime = { workspace = true }
 ark-ff = { git = "https://github.com/arkworks-rs/algebra", optional = true, features = ["asm"] }
 ark-ec = { git = "https://github.com/arkworks-rs/algebra", optional = true, features = ["parallel"] }
-ark-poly = { git = "https://github.com/arkworks-rs/algebra", optional = true }
+ark-poly = { version = "^0.4.0", optional = true }
 ark-std = { git = "https://github.com/arkworks-rs/std", optional = true }
 
 rayon = "1.8.1"
