@@ -10,7 +10,7 @@ icicle-bn254 = { path = "../../../wrappers/rust/icicle-curves/icicle-bn254", fea
 icicle-bls12-377 = { path = "../../../wrappers/rust/icicle-curves/icicle-bls12-377", features = ["arkworks"] }
 
 ark-ff = { version = "0.4.0" }
-ark-poly = "0.4.0"
+ark-poly = "^0.4.0"
 ark-std = "0.4.0"
 ark-bn254 = { version = "0.4.0" }
 ark-bls12-377 = { version = "0.4.0" }
