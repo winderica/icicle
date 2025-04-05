@@ -71,33 +71,48 @@ namespace vec_ops {
     scalar_t* mat,
     int* row_ptr,
     int* col_idx,
-    int n_rows,
+    int* sparse_to_original,
+    int* dense_to_original,
+    int num_sparse_rows,
+    int num_dense_rows,
     device_context::DeviceContext& ctx,
-    scalar_t* output_mat,
-    int* output_row_ptr,
-    int* output_col_idx)
+    HybridMatrix<scalar_t>* output)
   {
-    return prepare_matrix<scalar_t>(mat, row_ptr, col_idx, n_rows, ctx, output_mat, output_row_ptr, output_col_idx);
+    return prepare_matrix<scalar_t>(
+      mat, row_ptr, col_idx, sparse_to_original, dense_to_original, num_sparse_rows, num_dense_rows, ctx, output);
   }
 
   extern "C" cudaError_t CONCAT_EXPAND(FIELD, compute_t_cuda)(
-    scalar_t* mat_a,
-    const int* row_ptr_a,
-    const int* col_idx_a,
-    scalar_t* mat_b,
-    const int* row_ptr_b,
-    const int* col_idx_b,
-    scalar_t* mat_c,
-    const int* row_ptr_c,
-    const int* col_idx_c,
-    scalar_t* z1,
-    scalar_t* z2,
+    HybridMatrix<scalar_t>* a,
+    HybridMatrix<scalar_t>* b,
+    HybridMatrix<scalar_t>* c,
+    scalar_t* z1_u,
+    scalar_t* z1_x,
+    scalar_t* z1_qw,
+    scalar_t* z2_u,
+    scalar_t* z2_x,
+    scalar_t* z2_qw,
+    scalar_t* e,
+    int n_pub,
     int n_rows,
     int n_cols,
     device_context::DeviceContext& ctx,
     scalar_t* result)
   {
-    return compute_t<scalar_t>(mat_a, row_ptr_a, col_idx_a, mat_b, row_ptr_b, col_idx_b, mat_c, row_ptr_c, col_idx_c, z1, z2, n_rows, n_cols, ctx, result);
+    return compute_t_hybrid<scalar_t>(
+      a, b, c, z1_u, z1_x, z1_qw, z2_u, z2_x, z2_qw, e, n_pub, n_rows, n_cols, ctx, result);
+  }
+
+  extern "C" cudaError_t
+  CONCAT_EXPAND(FIELD, update_e_cuda)(scalar_t* e, scalar_t* t, scalar_t* r, int n, device_context::DeviceContext& ctx)
+  {
+    return update_e<scalar_t>(e, t, r, n, ctx);
+  }
+
+  extern "C" cudaError_t
+  CONCAT_EXPAND(FIELD, return_e_cuda)(scalar_t* d_e, int n, device_context::DeviceContext& ctx, scalar_t* h_e)
+  {
+    return return_e<scalar_t>(d_e, n, ctx, h_e);
   }
 
   /**

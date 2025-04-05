@@ -1,7 +1,7 @@
 use icicle_cuda_runtime::device::check_device;
 use icicle_cuda_runtime::{
     device_context::{DeviceContext, DEFAULT_DEVICE_ID},
-    memory::{HostOrDeviceSlice, DeviceSlice},
+    memory::{DeviceSlice, HostOrDeviceSlice},
 };
 
 use crate::{error::IcicleResult, traits::FieldImpl};
@@ -38,6 +38,21 @@ impl<'a> VecOpsConfig<'a> {
             is_async: false,
         }
     }
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Default)]
+pub struct HybridMatrix {
+    pub values: usize,      // Non-zero values
+    pub col_indices: usize, // Column indices for non-zeros
+    pub row_ptrs: usize,    // Row pointers into values/col_indices arrays
+
+    pub parse_to_original: usize,
+    pub dense_to_original: usize,
+    pub temp: usize,
+
+    pub num_sparse_rows: i32,
+    pub num_dense_rows: i32,
 }
 
 #[repr(C)]
@@ -116,26 +131,38 @@ pub trait VecOps<F> {
         mat: &(impl HostOrDeviceSlice<F> + ?Sized),
         row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
         col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        sparse_to_original: &(impl HostOrDeviceSlice<i32> + ?Sized),
+        dense_to_original: &(impl HostOrDeviceSlice<i32> + ?Sized),
         ctx: &DeviceContext,
-        output_mat: &mut DeviceSlice<F>,
-        output_row_ptr: &mut DeviceSlice<i32>,
-        output_col_idx: &mut DeviceSlice<i32>,
+        output: &mut HybridMatrix,
     ) -> IcicleResult<()>;
 
     fn compute_t(
-        mat_a: &(impl HostOrDeviceSlice<F> + ?Sized),
-        row_ptr_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        mat_b: &(impl HostOrDeviceSlice<F> + ?Sized),
-        row_ptr_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        mat_c: &(impl HostOrDeviceSlice<F> + ?Sized),
-        row_ptr_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        z1: &(impl HostOrDeviceSlice<F> + ?Sized),
-        z2: &(impl HostOrDeviceSlice<F> + ?Sized),
+        a: &HybridMatrix,
+        b: &HybridMatrix,
+        c: &HybridMatrix,
+        z1_u: &(impl HostOrDeviceSlice<F> + ?Sized),
+        z1_x: &(impl HostOrDeviceSlice<F> + ?Sized),
+        z1_qw: &(impl HostOrDeviceSlice<F> + ?Sized),
+        z2_u: &(impl HostOrDeviceSlice<F> + ?Sized),
+        z2_x: &(impl HostOrDeviceSlice<F> + ?Sized),
+        z2_qw: &(impl HostOrDeviceSlice<F> + ?Sized),
+        e: &(impl HostOrDeviceSlice<F> + ?Sized),
         ctx: &DeviceContext,
         result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
+    ) -> IcicleResult<()>;
+
+    fn update_e(
+        e: &(impl HostOrDeviceSlice<F> + ?Sized),
+        t: &(impl HostOrDeviceSlice<F> + ?Sized),
+        r: &(impl HostOrDeviceSlice<F> + ?Sized),
+        ctx: &DeviceContext,
+    ) -> IcicleResult<()>;
+
+    fn return_e(
+        d_e: &(impl HostOrDeviceSlice<F> + ?Sized),
+        ctx: &DeviceContext,
+        h_e: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     ) -> IcicleResult<()>;
 
     fn transpose(
@@ -240,9 +267,9 @@ pub fn add_scalars<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-    where
-        F: FieldImpl,
-        <F as FieldImpl>::Config: VecOps<F>,
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = check_vec_ops_args(a, b, result, cfg);
     <<F as FieldImpl>::Config as VecOps<F>>::add(a, b, result, &cfg)
@@ -267,9 +294,9 @@ pub fn sub_scalars<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-    where
-        F: FieldImpl,
-        <F as FieldImpl>::Config: VecOps<F>,
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = check_vec_ops_args(a, b, result, cfg);
     <<F as FieldImpl>::Config as VecOps<F>>::sub(a, b, result, &cfg)
@@ -281,9 +308,9 @@ pub fn mul_scalars<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-    where
-        F: FieldImpl,
-        <F as FieldImpl>::Config: VecOps<F>,
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = check_vec_ops_args(a, b, result, cfg);
     <<F as FieldImpl>::Config as VecOps<F>>::mul(a, b, result, &cfg)
@@ -297,9 +324,9 @@ pub fn mul_mat<F>(
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
     cfg: &VecOpsConfig,
 ) -> IcicleResult<()>
-    where
-        F: FieldImpl,
-        <F as FieldImpl>::Config: VecOps<F>,
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
 {
     let cfg = {
         let ctx_device_id = cfg
@@ -328,16 +355,16 @@ pub fn mul_mat<F>(
     <<F as FieldImpl>::Config as VecOps<F>>::mul_mat(vec, mat, row_ptr, col_idx, result, &cfg)
 }
 
-
 pub fn prepare_matrix<F>(
     mat: &(impl HostOrDeviceSlice<F> + ?Sized),
     row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
     col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    sparse_to_original: &(impl HostOrDeviceSlice<i32> + ?Sized),
+    dense_to_original: &(impl HostOrDeviceSlice<i32> + ?Sized),
     ctx: &DeviceContext,
-    output_mat: &mut DeviceSlice<F>,
-    output_row_ptr: &mut DeviceSlice<i32>,
-    output_col_idx: &mut DeviceSlice<i32>,
-) -> IcicleResult<()> where
+    output: &mut HybridMatrix,
+) -> IcicleResult<()>
+where
     F: FieldImpl,
     <F as FieldImpl>::Config: VecOps<F>,
 {
@@ -345,34 +372,57 @@ pub fn prepare_matrix<F>(
         mat,
         row_ptr,
         col_idx,
+        sparse_to_original,
+        dense_to_original,
         ctx,
-        output_mat,
-        output_row_ptr,
-        output_col_idx,
+        output,
     )
 }
 
 pub fn compute_t<F>(
-    mat_a: &(impl HostOrDeviceSlice<F> + ?Sized),
-    row_ptr_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
-    col_idx_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
-    mat_b: &(impl HostOrDeviceSlice<F> + ?Sized),
-    row_ptr_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
-    col_idx_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
-    mat_c: &(impl HostOrDeviceSlice<F> + ?Sized),
-    row_ptr_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
-    col_idx_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
-    z1: &(impl HostOrDeviceSlice<F> + ?Sized),
-    z2: &(impl HostOrDeviceSlice<F> + ?Sized),
+    a: &HybridMatrix,
+    b: &HybridMatrix,
+    c: &HybridMatrix,
+    z1_u: &(impl HostOrDeviceSlice<F> + ?Sized),
+    z1_x: &(impl HostOrDeviceSlice<F> + ?Sized),
+    z1_qw: &(impl HostOrDeviceSlice<F> + ?Sized),
+    z2_u: &(impl HostOrDeviceSlice<F> + ?Sized),
+    z2_x: &(impl HostOrDeviceSlice<F> + ?Sized),
+    z2_qw: &(impl HostOrDeviceSlice<F> + ?Sized),
+    e: &(impl HostOrDeviceSlice<F> + ?Sized),
     ctx: &DeviceContext,
     result: &mut (impl HostOrDeviceSlice<F> + ?Sized),
-) -> IcicleResult<()> where
+) -> IcicleResult<()>
+where
     F: FieldImpl,
     <F as FieldImpl>::Config: VecOps<F>,
 {
-    <<F as FieldImpl>::Config as VecOps<F>>::compute_t(
-        mat_a, row_ptr_a, col_idx_a, mat_b, row_ptr_b, col_idx_b, mat_c, row_ptr_c, col_idx_c, z1, z2, ctx, result,
-    )
+    <<F as FieldImpl>::Config as VecOps<F>>::compute_t(a, b, c, z1_u, z1_x, z1_qw, z2_u, z2_x, z2_qw, e, ctx, result)
+}
+
+pub fn update_e<F>(
+    e: &(impl HostOrDeviceSlice<F> + ?Sized),
+    t: &(impl HostOrDeviceSlice<F> + ?Sized),
+    r: &(impl HostOrDeviceSlice<F> + ?Sized),
+    ctx: &DeviceContext,
+) -> IcicleResult<()>
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
+{
+    <<F as FieldImpl>::Config as VecOps<F>>::update_e(e, t, r, ctx)
+}
+
+pub fn return_e<F>(
+    d_e: &(impl HostOrDeviceSlice<F> + ?Sized),
+    ctx: &DeviceContext,
+    h_e: &mut (impl HostOrDeviceSlice<F> + ?Sized),
+) -> IcicleResult<()>
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
+{
+    <<F as FieldImpl>::Config as VecOps<F>>::return_e(d_e, ctx, h_e)
 }
 
 pub fn transpose_matrix<F>(
@@ -384,9 +434,9 @@ pub fn transpose_matrix<F>(
     on_device: bool,
     is_async: bool,
 ) -> IcicleResult<()>
-    where
-        F: FieldImpl,
-        <F as FieldImpl>::Config: VecOps<F>,
+where
+    F: FieldImpl,
+    <F as FieldImpl>::Config: VecOps<F>,
 {
     <<F as FieldImpl>::Config as VecOps<F>>::transpose(input, row_size, column_size, output, ctx, on_device, is_async)
 }
@@ -427,6 +477,7 @@ macro_rules! impl_vec_ops_field {
         mod $field_prefix_ident {
             use crate::vec_ops::{$field, CudaError, DeviceContext, HostOrDeviceSlice};
             use icicle_core::vec_ops::BitReverseConfig;
+            use icicle_core::vec_ops::HybridMatrix;
             use icicle_core::vec_ops::VecOpsConfig;
 
             extern "C" {
@@ -482,30 +533,48 @@ macro_rules! impl_vec_ops_field {
                     mat: *const $field,
                     row_ptr: *const i32,
                     col_idx: *const i32,
-                    n_rows: i32,
+                    sparse_to_original: *const i32,
+                    dense_to_original: *const i32,
+                    num_sparse_rows: i32,
+                    num_dense_rows: i32,
                     ctx: *const DeviceContext,
-                    output_mat: *const $field,
-                    output_row_ptr: *const i32,
-                    output_col_idx: *const i32,
+                    output: *mut HybridMatrix,
                 ) -> CudaError;
 
                 #[link_name = concat!($field_prefix, "_compute_t_cuda")]
                 pub(crate) fn compute_t_cuda(
-                    mat_a: *const $field,
-                    row_ptr_a: *const i32,
-                    col_idx_a: *const i32,
-                    mat_b: *const $field,
-                    row_ptr_b: *const i32,
-                    col_idx_b: *const i32,
-                    mat_c: *const $field,
-                    row_ptr_c: *const i32,
-                    col_idx_c: *const i32,
-                    z1: *const $field,
-                    z2: *const $field,
+                    a: *const HybridMatrix,
+                    b: *const HybridMatrix,
+                    c: *const HybridMatrix,
+                    z1_u: *const $field,
+                    z1_x: *const $field,
+                    z1_qw: *const $field,
+                    z2_u: *const $field,
+                    z2_x: *const $field,
+                    z2_qw: *const $field,
+                    e: *const $field,
+                    n_pub: i32,
                     n_rows: i32,
                     n_cols: i32,
                     ctx: *const DeviceContext,
                     result: *const $field,
+                ) -> CudaError;
+
+                #[link_name = concat!($field_prefix, "_update_e_cuda")]
+                pub(crate) fn update_e_cuda(
+                    e: *const $field,
+                    t: *const $field,
+                    r: *const $field,
+                    n: i32,
+                    ctx: *const DeviceContext,
+                ) -> CudaError;
+
+                #[link_name = concat!($field_prefix, "_return_e_cuda")]
+                pub(crate) fn return_e_cuda(
+                    d_e: *const $field,
+                    n: i32,
+                    ctx: *const DeviceContext,
+                    h_e: *const $field,
                 ) -> CudaError;
 
                 #[link_name = concat!($field_prefix, "_transpose_matrix_cuda")]
@@ -623,61 +692,60 @@ macro_rules! impl_vec_ops_field {
                 }
             }
 
-
-    fn prepare_matrix(
-        mat:  &(impl HostOrDeviceSlice<$field> + ?Sized),
-        row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        ctx: &DeviceContext,
-        output_mat: &mut icicle_cuda_runtime::memory::DeviceSlice<$field>,
-        output_row_ptr: &mut icicle_cuda_runtime::memory::DeviceSlice<i32>,
-        output_col_idx: &mut icicle_cuda_runtime::memory::DeviceSlice<i32>,
-    ) -> IcicleResult<()> {
-unsafe {
+            fn prepare_matrix(
+                mat: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                row_ptr: &(impl HostOrDeviceSlice<i32> + ?Sized),
+                col_idx: &(impl HostOrDeviceSlice<i32> + ?Sized),
+                sparse_to_original: &(impl HostOrDeviceSlice<i32> + ?Sized),
+                dense_to_original: &(impl HostOrDeviceSlice<i32> + ?Sized),
+                ctx: &DeviceContext,
+                output_mat: &mut HybridMatrix,
+            ) -> IcicleResult<()> {
+                unsafe {
                     $field_prefix_ident::prepare_matrix_cuda(
                         mat.as_ptr(),
                         row_ptr.as_ptr(),
                         col_idx.as_ptr(),
-                        (row_ptr.len() - 1) as i32,
+                        sparse_to_original.as_ptr(),
+                        dense_to_original.as_ptr(),
+                        sparse_to_original.len() as i32,
+                        dense_to_original.len() as i32,
                         ctx as *const DeviceContext,
-                        output_mat.as_mut_ptr(),
-                        output_row_ptr.as_mut_ptr(),
-                        output_col_idx.as_mut_ptr(),
+                        output_mat as *mut HybridMatrix,
                     )
                     .wrap()
                 }
             }
 
-    fn compute_t(
-        mat_a:  &(impl HostOrDeviceSlice<$field> + ?Sized),
-        row_ptr_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx_a: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        mat_b:  &(impl HostOrDeviceSlice<$field> + ?Sized),
-        row_ptr_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx_b: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        mat_c:  &(impl HostOrDeviceSlice<$field> + ?Sized),
-        row_ptr_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        col_idx_c: &(impl HostOrDeviceSlice<i32> + ?Sized),
-        z1:  &(impl HostOrDeviceSlice<$field> + ?Sized),
-        z2:  &(impl HostOrDeviceSlice<$field> + ?Sized),
-        ctx: &DeviceContext,
-        result:  &mut (impl HostOrDeviceSlice<$field> + ?Sized),
-    ) -> IcicleResult<()> {
+            fn compute_t(
+                a: &HybridMatrix,
+                b: &HybridMatrix,
+                c: &HybridMatrix,
+                z1_u: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                z1_x: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                z1_qw: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                z2_u: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                z2_x: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                z2_qw: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                e: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                ctx: &DeviceContext,
+                result: &mut (impl HostOrDeviceSlice<$field> + ?Sized),
+            ) -> IcicleResult<()> {
                 unsafe {
                     $field_prefix_ident::compute_t_cuda(
-                        mat_a.as_ptr(),
-                        row_ptr_a.as_ptr(),
-                        col_idx_a.as_ptr(),
-                        mat_b.as_ptr(),
-                        row_ptr_b.as_ptr(),
-                        col_idx_b.as_ptr(),
-                        mat_c.as_ptr(),
-                        row_ptr_c.as_ptr(),
-                        col_idx_c.as_ptr(),
-                        z1.as_ptr(),
-                        z2.as_ptr(),
-                        (row_ptr_a.len() - 1) as i32,
-                        z1.len() as i32,
+                        a as *const HybridMatrix,
+                        b as *const HybridMatrix,
+                        c as *const HybridMatrix,
+                        z1_u.as_ptr(),
+                        z1_x.as_ptr(),
+                        z1_qw.as_ptr(),
+                        z2_u.as_ptr(),
+                        z2_x.as_ptr(),
+                        z2_qw.as_ptr(),
+                        e.as_ptr(),
+                        z1_x.len() as i32,
+                        a.num_sparse_rows + a.num_dense_rows,
+                        (1 + z1_x.len() + z1_qw.len()) as i32,
                         ctx as *const DeviceContext,
                         result.as_mut_ptr(),
                     )
@@ -685,6 +753,39 @@ unsafe {
                 }
             }
 
+            fn update_e(
+                e: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                t: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                r: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                ctx: &DeviceContext,
+            ) -> IcicleResult<()> {
+                unsafe {
+                    $field_prefix_ident::update_e_cuda(
+                        e.as_ptr(),
+                        t.as_ptr(),
+                        r.as_ptr(),
+                        e.len() as i32,
+                        ctx as *const DeviceContext,
+                    )
+                    .wrap()
+                }
+            }
+
+            fn return_e(
+                d_e: &(impl HostOrDeviceSlice<$field> + ?Sized),
+                ctx: &DeviceContext,
+                h_e: &mut (impl HostOrDeviceSlice<$field> + ?Sized),
+            ) -> IcicleResult<()> {
+                unsafe {
+                    $field_prefix_ident::return_e_cuda(
+                        d_e.as_ptr(),
+                        d_e.len() as i32,
+                        ctx as *const DeviceContext,
+                        h_e.as_mut_ptr(),
+                    )
+                    .wrap()
+                }
+            }
 
             fn transpose(
                 input: &(impl HostOrDeviceSlice<$field> + ?Sized),

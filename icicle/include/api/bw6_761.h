@@ -49,9 +49,6 @@ extern "C" cudaError_t bw6_761_g2_affine_convert_montgomery(
 extern "C" cudaError_t bw6_761_g2_projective_convert_montgomery(
   bw6_761::g2_projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
-extern "C" cudaError_t bw6_761_ecntt_cuda(
-  const bw6_761::projective_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bw6_761::scalar_t>& config, bw6_761::projective_t* output);
-
 extern "C" bool bw6_761_eq(bw6_761::projective_t* point1, bw6_761::projective_t* point2);
 
 extern "C" void bw6_761_to_affine(bw6_761::projective_t* point, bw6_761::affine_t* point_out);
@@ -66,22 +63,21 @@ extern "C" cudaError_t bw6_761_affine_convert_montgomery(
 extern "C" cudaError_t bw6_761_projective_convert_montgomery(
   bw6_761::projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
-extern "C" cudaError_t bw6_761_build_merkle_tree(
-  const bw6_761::scalar_t* leaves,
-  bw6_761::scalar_t* digests,
-  unsigned int height,
-  unsigned int input_block_len, 
-  const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* compression,
-  const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* bottom_layer,
-  const merkle_tree::TreeBuilderConfig& tree_config);
+extern "C" cudaError_t bw6_761_ecntt_cuda(
+  const bw6_761::projective_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bw6_761::scalar_t>& config, bw6_761::projective_t* output);
 
-  extern "C" cudaError_t bw6_761_mmcs_commit_cuda(
-    const matrix::Matrix<bw6_761::scalar_t>* leaves,
-    unsigned int number_of_inputs,
-    bw6_761::scalar_t* digests,
-    const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* hasher,
-    const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* compression,
-    const merkle_tree::TreeBuilderConfig& tree_config);
+extern "C" cudaError_t bw6_761_initialize_domain(
+  bw6_761::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
+
+extern "C" cudaError_t bw6_761_ntt_cuda(
+  const bw6_761::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bw6_761::scalar_t>& config, bw6_761::scalar_t* output);
+
+extern "C" cudaError_t bw6_761_release_domain(device_context::DeviceContext& ctx);
+
+extern "C" void bw6_761_generate_scalars(bw6_761::scalar_t* scalars, int size);
+
+extern "C" cudaError_t bw6_761_scalar_convert_montgomery(
+  bw6_761::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
 extern "C" cudaError_t bw6_761_poseidon_create_cuda(
   poseidon::Poseidon<bw6_761::scalar_t>** poseidon,
@@ -125,6 +121,50 @@ extern "C" cudaError_t bw6_761_accumulate_cuda(
 extern "C" cudaError_t bw6_761_sub_cuda(
   bw6_761::scalar_t* vec_a, bw6_761::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, bw6_761::scalar_t* result);
 
+extern "C" cudaError_t bw6_761_mul_mat_cuda(
+  bw6_761::scalar_t* vec_a, bw6_761::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, bw6_761::scalar_t* result);
+
+extern "C" cudaError_t bw6_761_prepare_matrix_cuda(
+  bw6_761::scalar_t* mat,
+  int* row_ptr,
+  int* col_idx,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
+  device_context::DeviceContext& ctx,
+  HybridMatrix<bw6_761::scalar_t>* output);
+
+extern "C" cudaError_t bw6_761_compute_t_cuda(
+  HybridMatrix<bw6_761::scalar_t>* a,
+  HybridMatrix<bw6_761::scalar_t>* b,
+  HybridMatrix<bw6_761::scalar_t>* c,
+  bw6_761::scalar_t* z1_u,
+  bw6_761::scalar_t* z1_x,
+  bw6_761::scalar_t* z1_qw,
+  bw6_761::scalar_t* z2_u,
+  bw6_761::scalar_t* z2_x,
+  bw6_761::scalar_t* z2_qw,
+  bw6_761::scalar_t* e,
+  int n_pub,
+  int n_rows,
+  int n_cols,
+  device_context::DeviceContext& ctx,
+  bw6_761::scalar_t* result);
+
+extern "C" cudaError_t bw6_761_update_e_cuda(
+  bw6_761::scalar_t* e,
+  bw6_761::scalar_t* t,
+  bw6_761::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t bw6_761_return_e_cuda(
+  bw6_761::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  bw6_761::scalar_t* h_e);
+
 extern "C" cudaError_t bw6_761_transpose_matrix_cuda(
   const bw6_761::scalar_t* input,
   uint32_t row_size,
@@ -138,17 +178,21 @@ extern "C" cudaError_t bw6_761_bit_reverse_cuda(
   const bw6_761::scalar_t* input, uint64_t n, vec_ops::BitReverseConfig& config, bw6_761::scalar_t* output);
 
 
-extern "C" void bw6_761_generate_scalars(bw6_761::scalar_t* scalars, int size);
+extern "C" cudaError_t bw6_761_build_merkle_tree(
+  const bw6_761::scalar_t* leaves,
+  bw6_761::scalar_t* digests,
+  unsigned int height,
+  unsigned int input_block_len, 
+  const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* compression,
+  const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* bottom_layer,
+  const merkle_tree::TreeBuilderConfig& tree_config);
 
-extern "C" cudaError_t bw6_761_scalar_convert_montgomery(
-  bw6_761::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
-
-extern "C" cudaError_t bw6_761_initialize_domain(
-  bw6_761::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
-
-extern "C" cudaError_t bw6_761_ntt_cuda(
-  const bw6_761::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bw6_761::scalar_t>& config, bw6_761::scalar_t* output);
-
-extern "C" cudaError_t bw6_761_release_domain(device_context::DeviceContext& ctx);
+  extern "C" cudaError_t bw6_761_mmcs_commit_cuda(
+    const matrix::Matrix<bw6_761::scalar_t>* leaves,
+    unsigned int number_of_inputs,
+    bw6_761::scalar_t* digests,
+    const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* hasher,
+    const hash::Hasher<bw6_761::scalar_t, bw6_761::scalar_t>* compression,
+    const merkle_tree::TreeBuilderConfig& tree_config);
 
 #endif

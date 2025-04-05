@@ -50,9 +50,6 @@ extern "C" cudaError_t bn254_g2_affine_convert_montgomery(
 extern "C" cudaError_t bn254_g2_projective_convert_montgomery(
   bn254::g2_projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
-extern "C" cudaError_t bn254_ecntt_cuda(
-  const bn254::projective_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bn254::scalar_t>& config, bn254::projective_t* output);
-
 extern "C" bool bn254_eq(bn254::projective_t* point1, bn254::projective_t* point2);
 
 extern "C" void bn254_to_affine(bn254::projective_t* point, bn254::affine_t* point_out);
@@ -66,6 +63,22 @@ extern "C" cudaError_t bn254_affine_convert_montgomery(
 
 extern "C" cudaError_t bn254_projective_convert_montgomery(
   bn254::projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t bn254_ecntt_cuda(
+  const bn254::projective_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bn254::scalar_t>& config, bn254::projective_t* output);
+
+extern "C" cudaError_t bn254_initialize_domain(
+  bn254::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
+
+extern "C" cudaError_t bn254_ntt_cuda(
+  const bn254::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bn254::scalar_t>& config, bn254::scalar_t* output);
+
+extern "C" cudaError_t bn254_release_domain(device_context::DeviceContext& ctx);
+
+extern "C" void bn254_generate_scalars(bn254::scalar_t* scalars, int size);
+
+extern "C" cudaError_t bn254_scalar_convert_montgomery(
+  bn254::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
 extern "C" cudaError_t bn254_poseidon2_create_cuda(
   poseidon2::Poseidon2<bn254::scalar_t>** poseidon,
@@ -101,23 +114,6 @@ extern "C" cudaError_t bn254_poseidon2_hash_many_cuda(
 
 extern "C" cudaError_t
   bn254_poseidon2_delete_cuda(poseidon2::Poseidon2<bn254::scalar_t>* poseidon, device_context::DeviceContext& ctx);
-
-extern "C" cudaError_t bn254_build_merkle_tree(
-  const bn254::scalar_t* leaves,
-  bn254::scalar_t* digests,
-  unsigned int height,
-  unsigned int input_block_len, 
-  const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* compression,
-  const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* bottom_layer,
-  const merkle_tree::TreeBuilderConfig& tree_config);
-
-  extern "C" cudaError_t bn254_mmcs_commit_cuda(
-    const matrix::Matrix<bn254::scalar_t>* leaves,
-    unsigned int number_of_inputs,
-    bn254::scalar_t* digests,
-    const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* hasher,
-    const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* compression,
-    const merkle_tree::TreeBuilderConfig& tree_config);
 
 extern "C" cudaError_t bn254_poseidon_create_cuda(
   poseidon::Poseidon<bn254::scalar_t>** poseidon,
@@ -161,6 +157,50 @@ extern "C" cudaError_t bn254_accumulate_cuda(
 extern "C" cudaError_t bn254_sub_cuda(
   bn254::scalar_t* vec_a, bn254::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, bn254::scalar_t* result);
 
+extern "C" cudaError_t bn254_mul_mat_cuda(
+  bn254::scalar_t* vec_a, bn254::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, bn254::scalar_t* result);
+
+extern "C" cudaError_t bn254_prepare_matrix_cuda(
+  bn254::scalar_t* mat,
+  int* row_ptr,
+  int* col_idx,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
+  device_context::DeviceContext& ctx,
+  HybridMatrix<bn254::scalar_t>* output);
+
+extern "C" cudaError_t bn254_compute_t_cuda(
+  HybridMatrix<bn254::scalar_t>* a,
+  HybridMatrix<bn254::scalar_t>* b,
+  HybridMatrix<bn254::scalar_t>* c,
+  bn254::scalar_t* z1_u,
+  bn254::scalar_t* z1_x,
+  bn254::scalar_t* z1_qw,
+  bn254::scalar_t* z2_u,
+  bn254::scalar_t* z2_x,
+  bn254::scalar_t* z2_qw,
+  bn254::scalar_t* e,
+  int n_pub,
+  int n_rows,
+  int n_cols,
+  device_context::DeviceContext& ctx,
+  bn254::scalar_t* result);
+
+extern "C" cudaError_t bn254_update_e_cuda(
+  bn254::scalar_t* e,
+  bn254::scalar_t* t,
+  bn254::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t bn254_return_e_cuda(
+  bn254::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  bn254::scalar_t* h_e);
+
 extern "C" cudaError_t bn254_transpose_matrix_cuda(
   const bn254::scalar_t* input,
   uint32_t row_size,
@@ -174,17 +214,21 @@ extern "C" cudaError_t bn254_bit_reverse_cuda(
   const bn254::scalar_t* input, uint64_t n, vec_ops::BitReverseConfig& config, bn254::scalar_t* output);
 
 
-extern "C" void bn254_generate_scalars(bn254::scalar_t* scalars, int size);
+extern "C" cudaError_t bn254_build_merkle_tree(
+  const bn254::scalar_t* leaves,
+  bn254::scalar_t* digests,
+  unsigned int height,
+  unsigned int input_block_len, 
+  const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* compression,
+  const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* bottom_layer,
+  const merkle_tree::TreeBuilderConfig& tree_config);
 
-extern "C" cudaError_t bn254_scalar_convert_montgomery(
-  bn254::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
-
-extern "C" cudaError_t bn254_initialize_domain(
-  bn254::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
-
-extern "C" cudaError_t bn254_ntt_cuda(
-  const bn254::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<bn254::scalar_t>& config, bn254::scalar_t* output);
-
-extern "C" cudaError_t bn254_release_domain(device_context::DeviceContext& ctx);
+  extern "C" cudaError_t bn254_mmcs_commit_cuda(
+    const matrix::Matrix<bn254::scalar_t>* leaves,
+    unsigned int number_of_inputs,
+    bn254::scalar_t* digests,
+    const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* hasher,
+    const hash::Hasher<bn254::scalar_t, bn254::scalar_t>* compression,
+    const merkle_tree::TreeBuilderConfig& tree_config);
 
 #endif

@@ -8,9 +8,9 @@ icicle-cuda-runtime = { path = "../../../wrappers/rust/icicle-cuda-runtime" }
 icicle-core = { path = "../../../wrappers/rust/icicle-core" }
 icicle-bn254 = { path = "../../../wrappers/rust/icicle-curves/icicle-bn254", features = ["g2"] }
 icicle-bls12-377 = { path = "../../../wrappers/rust/icicle-curves/icicle-bls12-377" }
-ark-bn254 = { git = "https://github.com/arkworks-rs/algebra", optional = true }
-ark-bls12-377 = { git = "https://github.com/arkworks-rs/algebra", optional = true }
-ark-ec = { git = "https://github.com/arkworks-rs/algebra", optional = true, features = ["parallel"] }
+ark-bn254 = { version = "0.5.0", optional = true }
+ark-bls12-377 = { version = "0.5.0", optional = true }
+ark-ec = { version = "0.5.0", optional = true, features = ["parallel"] }
 clap = { version = "<=4.4.12", features = ["derive"] }
 
 [features]
@@ -19,11 +19,11 @@ arkworks = ["ark-bn254", "ark-bls12-377", "ark-ec", "icicle-core/arkworks", "ici
 profile = []
 
 [patch.crates-io]
-ark-ff = { git = "https://github.com/arkworks-rs/algebra/" }
-ark-ec = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-ff = { version = "0.5.0" }
+ark-ec = { version = "0.5.0" }
 ark-poly = "^0.4.0"
-ark-std = { git = "https://github.com/arkworks-rs/std/" }
-ark-bn254 = { git = "https://github.com/arkworks-rs/algebra/" }
-ark-grumpkin = { git = "https://github.com/arkworks-rs/algebra/" }
-ark-pallas = { git = "https://github.com/arkworks-rs/algebra/" }
-ark-vesta = { git = "https://github.com/arkworks-rs/algebra/" }
+ark-std = { version = "0.5.0" }
+ark-bn254 = { version = "0.5.0" }
+ark-grumpkin = { version = "0.5.0" }
+ark-pallas = { version = "0.5.0" }
+ark-vesta = { version = "0.5.0" }

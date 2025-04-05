@@ -15,22 +15,18 @@
 #include "ntt/ntt.cuh"
 #include "vec_ops/vec_ops.cuh"
 
-extern "C" cudaError_t stark252_build_merkle_tree(
-  const stark252::scalar_t* leaves,
-  stark252::scalar_t* digests,
-  unsigned int height,
-  unsigned int input_block_len, 
-  const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* compression,
-  const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* bottom_layer,
-  const merkle_tree::TreeBuilderConfig& tree_config);
+extern "C" cudaError_t stark252_initialize_domain(
+  stark252::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
 
-  extern "C" cudaError_t stark252_mmcs_commit_cuda(
-    const matrix::Matrix<stark252::scalar_t>* leaves,
-    unsigned int number_of_inputs,
-    stark252::scalar_t* digests,
-    const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* hasher,
-    const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* compression,
-    const merkle_tree::TreeBuilderConfig& tree_config);
+extern "C" cudaError_t stark252_ntt_cuda(
+  const stark252::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<stark252::scalar_t>& config, stark252::scalar_t* output);
+
+extern "C" cudaError_t stark252_release_domain(device_context::DeviceContext& ctx);
+
+extern "C" void stark252_generate_scalars(stark252::scalar_t* scalars, int size);
+
+extern "C" cudaError_t stark252_scalar_convert_montgomery(
+  stark252::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
 extern "C" cudaError_t stark252_mul_cuda(
   stark252::scalar_t* vec_a, stark252::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, stark252::scalar_t* result);
@@ -51,28 +47,42 @@ extern "C" cudaError_t stark252_prepare_matrix_cuda(
   stark252::scalar_t* mat,
   int* row_ptr,
   int* col_idx,
-  int n_rows,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
   device_context::DeviceContext& ctx,
-  stark252::scalar_t* output_mat,
-  int* output_row_ptr,
-  int* output_col_idx);
+  HybridMatrix<stark252::scalar_t>* output);
 
 extern "C" cudaError_t stark252_compute_t_cuda(
-  stark252::scalar_t* mat_a,
-  const int* row_ptr_a,
-  const int* col_idx_a,
-  stark252::scalar_t* mat_b,
-  const int* row_ptr_b,
-  const int* col_idx_b,
-  stark252::scalar_t* mat_c,
-  const int* row_ptr_c,
-  const int* col_idx_c,
-  stark252::scalar_t* z1,
-  stark252::scalar_t* z2,
+  HybridMatrix<stark252::scalar_t>* a,
+  HybridMatrix<stark252::scalar_t>* b,
+  HybridMatrix<stark252::scalar_t>* c,
+  stark252::scalar_t* z1_u,
+  stark252::scalar_t* z1_x,
+  stark252::scalar_t* z1_qw,
+  stark252::scalar_t* z2_u,
+  stark252::scalar_t* z2_x,
+  stark252::scalar_t* z2_qw,
+  stark252::scalar_t* e,
+  int n_pub,
   int n_rows,
   int n_cols,
   device_context::DeviceContext& ctx,
   stark252::scalar_t* result);
+
+extern "C" cudaError_t stark252_update_e_cuda(
+  stark252::scalar_t* e,
+  stark252::scalar_t* t,
+  stark252::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t stark252_return_e_cuda(
+  stark252::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  stark252::scalar_t* h_e);
 
 extern "C" cudaError_t stark252_transpose_matrix_cuda(
   const stark252::scalar_t* input,
@@ -87,17 +97,21 @@ extern "C" cudaError_t stark252_bit_reverse_cuda(
   const stark252::scalar_t* input, uint64_t n, vec_ops::BitReverseConfig& config, stark252::scalar_t* output);
 
 
-extern "C" void stark252_generate_scalars(stark252::scalar_t* scalars, int size);
+extern "C" cudaError_t stark252_build_merkle_tree(
+  const stark252::scalar_t* leaves,
+  stark252::scalar_t* digests,
+  unsigned int height,
+  unsigned int input_block_len, 
+  const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* compression,
+  const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* bottom_layer,
+  const merkle_tree::TreeBuilderConfig& tree_config);
 
-extern "C" cudaError_t stark252_scalar_convert_montgomery(
-  stark252::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
-
-extern "C" cudaError_t stark252_initialize_domain(
-  stark252::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
-
-extern "C" cudaError_t stark252_ntt_cuda(
-  const stark252::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<stark252::scalar_t>& config, stark252::scalar_t* output);
-
-extern "C" cudaError_t stark252_release_domain(device_context::DeviceContext& ctx);
+  extern "C" cudaError_t stark252_mmcs_commit_cuda(
+    const matrix::Matrix<stark252::scalar_t>* leaves,
+    unsigned int number_of_inputs,
+    stark252::scalar_t* digests,
+    const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* hasher,
+    const hash::Hasher<stark252::scalar_t, stark252::scalar_t>* compression,
+    const merkle_tree::TreeBuilderConfig& tree_config);
 
 #endif

@@ -17,28 +17,42 @@ extern "C" cudaError_t ${FIELD}_prepare_matrix_cuda(
   ${FIELD}::scalar_t* mat,
   int* row_ptr,
   int* col_idx,
-  int n_rows,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
   device_context::DeviceContext& ctx,
-  ${FIELD}::scalar_t* output_mat,
-  int* output_row_ptr,
-  int* output_col_idx);
+  HybridMatrix<${FIELD}::scalar_t>* output);
 
 extern "C" cudaError_t ${FIELD}_compute_t_cuda(
-  ${FIELD}::scalar_t* mat_a,
-  const int* row_ptr_a,
-  const int* col_idx_a,
-  ${FIELD}::scalar_t* mat_b,
-  const int* row_ptr_b,
-  const int* col_idx_b,
-  ${FIELD}::scalar_t* mat_c,
-  const int* row_ptr_c,
-  const int* col_idx_c,
-  ${FIELD}::scalar_t* z1,
-  ${FIELD}::scalar_t* z2,
+  HybridMatrix<${FIELD}::scalar_t>* a,
+  HybridMatrix<${FIELD}::scalar_t>* b,
+  HybridMatrix<${FIELD}::scalar_t>* c,
+  ${FIELD}::scalar_t* z1_u,
+  ${FIELD}::scalar_t* z1_x,
+  ${FIELD}::scalar_t* z1_qw,
+  ${FIELD}::scalar_t* z2_u,
+  ${FIELD}::scalar_t* z2_x,
+  ${FIELD}::scalar_t* z2_qw,
+  ${FIELD}::scalar_t* e,
+  int n_pub,
   int n_rows,
   int n_cols,
   device_context::DeviceContext& ctx,
   ${FIELD}::scalar_t* result);
+
+extern "C" cudaError_t ${FIELD}_update_e_cuda(
+  ${FIELD}::scalar_t* e,
+  ${FIELD}::scalar_t* t,
+  ${FIELD}::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t ${FIELD}_return_e_cuda(
+  ${FIELD}::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  ${FIELD}::scalar_t* h_e);
 
 extern "C" cudaError_t ${FIELD}_transpose_matrix_cuda(
   const ${FIELD}::scalar_t* input,

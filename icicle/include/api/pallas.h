@@ -9,21 +9,17 @@
 
 #include <cuda_runtime.h>
 #include "gpu-utils/device_context.cuh"
+#include "merkle-tree/merkle.cuh"
+#include "matrix/matrix.cuh"
 #include "curves/params/pallas.cuh"
 #include "ntt/ntt.cuh"
 #include "msm/msm.cuh"
 #include "vec_ops/vec_ops.cuh"
 
-extern "C" cudaError_t pallas_ecntt_cuda(
-  const pallas::projective_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<pallas::scalar_t>& config, pallas::projective_t* output);
-
 extern "C" cudaError_t pallas_precompute_msm_bases_cuda(
   pallas::affine_t* bases,
-  int bases_size,
-  int precompute_factor,
-  int _c,
-  bool are_bases_on_device,
-  device_context::DeviceContext& ctx,
+  int msm_size,
+  msm::MSMConfig& config,
   pallas::affine_t* output_bases);
 
 extern "C" cudaError_t pallas_msm_cuda(
@@ -43,11 +39,30 @@ extern "C" cudaError_t pallas_affine_convert_montgomery(
 extern "C" cudaError_t pallas_projective_convert_montgomery(
   pallas::projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
+extern "C" cudaError_t pallas_ecntt_cuda(
+  const pallas::projective_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<pallas::scalar_t>& config, pallas::projective_t* output);
+
+extern "C" cudaError_t pallas_initialize_domain(
+  pallas::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
+
+extern "C" cudaError_t pallas_ntt_cuda(
+  const pallas::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<pallas::scalar_t>& config, pallas::scalar_t* output);
+
+extern "C" cudaError_t pallas_release_domain(device_context::DeviceContext& ctx);
+
+extern "C" void pallas_generate_scalars(pallas::scalar_t* scalars, int size);
+
+extern "C" cudaError_t pallas_scalar_convert_montgomery(
+  pallas::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
+
 extern "C" cudaError_t pallas_mul_cuda(
   pallas::scalar_t* vec_a, pallas::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, pallas::scalar_t* result);
 
 extern "C" cudaError_t pallas_add_cuda(
   pallas::scalar_t* vec_a, pallas::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, pallas::scalar_t* result);
+
+extern "C" cudaError_t pallas_accumulate_cuda(
+  pallas::scalar_t* vec_a, pallas::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config);
 
 extern "C" cudaError_t pallas_sub_cuda(
   pallas::scalar_t* vec_a, pallas::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, pallas::scalar_t* result);
@@ -59,28 +74,42 @@ extern "C" cudaError_t pallas_prepare_matrix_cuda(
   pallas::scalar_t* mat,
   int* row_ptr,
   int* col_idx,
-  int n_rows,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
   device_context::DeviceContext& ctx,
-  pallas::scalar_t* output_mat,
-  int* output_row_ptr,
-  int* output_col_idx);
+  HybridMatrix<pallas::scalar_t>* output);
 
 extern "C" cudaError_t pallas_compute_t_cuda(
-  pallas::scalar_t* mat_a,
-  const int* row_ptr_a,
-  const int* col_idx_a,
-  pallas::scalar_t* mat_b,
-  const int* row_ptr_b,
-  const int* col_idx_b,
-  pallas::scalar_t* mat_c,
-  const int* row_ptr_c,
-  const int* col_idx_c,
-  pallas::scalar_t* z1,
-  pallas::scalar_t* z2,
+  HybridMatrix<pallas::scalar_t>* a,
+  HybridMatrix<pallas::scalar_t>* b,
+  HybridMatrix<pallas::scalar_t>* c,
+  pallas::scalar_t* z1_u,
+  pallas::scalar_t* z1_x,
+  pallas::scalar_t* z1_qw,
+  pallas::scalar_t* z2_u,
+  pallas::scalar_t* z2_x,
+  pallas::scalar_t* z2_qw,
+  pallas::scalar_t* e,
+  int n_pub,
   int n_rows,
   int n_cols,
   device_context::DeviceContext& ctx,
   pallas::scalar_t* result);
+
+extern "C" cudaError_t pallas_update_e_cuda(
+  pallas::scalar_t* e,
+  pallas::scalar_t* t,
+  pallas::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t pallas_return_e_cuda(
+  pallas::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  pallas::scalar_t* h_e);
 
 extern "C" cudaError_t pallas_transpose_matrix_cuda(
   const pallas::scalar_t* input,
@@ -91,17 +120,25 @@ extern "C" cudaError_t pallas_transpose_matrix_cuda(
   bool on_device,
   bool is_async);
 
-extern "C" void pallas_generate_scalars(pallas::scalar_t* scalars, int size);
+extern "C" cudaError_t pallas_bit_reverse_cuda(
+  const pallas::scalar_t* input, uint64_t n, vec_ops::BitReverseConfig& config, pallas::scalar_t* output);
 
-extern "C" cudaError_t pallas_scalar_convert_montgomery(
-  pallas::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
-extern "C" cudaError_t pallas_initialize_domain(
-  pallas::scalar_t* primitive_root, device_context::DeviceContext& ctx, bool fast_twiddles_mode);
+extern "C" cudaError_t pallas_build_merkle_tree(
+  const pallas::scalar_t* leaves,
+  pallas::scalar_t* digests,
+  unsigned int height,
+  unsigned int input_block_len, 
+  const hash::Hasher<pallas::scalar_t, pallas::scalar_t>* compression,
+  const hash::Hasher<pallas::scalar_t, pallas::scalar_t>* bottom_layer,
+  const merkle_tree::TreeBuilderConfig& tree_config);
 
-extern "C" cudaError_t pallas_ntt_cuda(
-  const pallas::scalar_t* input, int size, ntt::NTTDir dir, ntt::NTTConfig<pallas::scalar_t>& config, pallas::scalar_t* output);
-
-extern "C" cudaError_t pallas_release_domain(device_context::DeviceContext& ctx);
+  extern "C" cudaError_t pallas_mmcs_commit_cuda(
+    const matrix::Matrix<pallas::scalar_t>* leaves,
+    unsigned int number_of_inputs,
+    pallas::scalar_t* digests,
+    const hash::Hasher<pallas::scalar_t, pallas::scalar_t>* hasher,
+    const hash::Hasher<pallas::scalar_t, pallas::scalar_t>* compression,
+    const merkle_tree::TreeBuilderConfig& tree_config);
 
 #endif

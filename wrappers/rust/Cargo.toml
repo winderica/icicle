@@ -34,12 +34,3 @@ repository = "https://github.com/ingonyama-zk/icicle"
 [workspace.dependencies]
 icicle-core = { path = "icicle-core" }
 icicle-cuda-runtime = { path = "icicle-cuda-runtime" }
-
-[patch.crates-io]
-ark-ff = { version = "0.5.0" }
-ark-ec = { version = "0.5.0" }
-ark-std = { version = "0.5.0" }
-ark-bn254 = { version = "0.5.0" }
-ark-grumpkin = { version = "0.5.0" }
-ark-pallas = { version = "0.5.0" }
-ark-vesta = { version = "0.5.0" }

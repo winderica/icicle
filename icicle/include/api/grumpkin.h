@@ -39,22 +39,10 @@ extern "C" cudaError_t grumpkin_affine_convert_montgomery(
 extern "C" cudaError_t grumpkin_projective_convert_montgomery(
   grumpkin::projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
-extern "C" cudaError_t grumpkin_build_merkle_tree(
-  const grumpkin::scalar_t* leaves,
-  grumpkin::scalar_t* digests,
-  unsigned int height,
-  unsigned int input_block_len, 
-  const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* compression,
-  const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* bottom_layer,
-  const merkle_tree::TreeBuilderConfig& tree_config);
+extern "C" void grumpkin_generate_scalars(grumpkin::scalar_t* scalars, int size);
 
-  extern "C" cudaError_t grumpkin_mmcs_commit_cuda(
-    const matrix::Matrix<grumpkin::scalar_t>* leaves,
-    unsigned int number_of_inputs,
-    grumpkin::scalar_t* digests,
-    const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* hasher,
-    const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* compression,
-    const merkle_tree::TreeBuilderConfig& tree_config);
+extern "C" cudaError_t grumpkin_scalar_convert_montgomery(
+  grumpkin::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
 extern "C" cudaError_t grumpkin_poseidon_create_cuda(
   poseidon::Poseidon<grumpkin::scalar_t>** poseidon,
@@ -98,6 +86,50 @@ extern "C" cudaError_t grumpkin_accumulate_cuda(
 extern "C" cudaError_t grumpkin_sub_cuda(
   grumpkin::scalar_t* vec_a, grumpkin::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, grumpkin::scalar_t* result);
 
+extern "C" cudaError_t grumpkin_mul_mat_cuda(
+  grumpkin::scalar_t* vec_a, grumpkin::scalar_t* mat, int* row_ptr, int* col_idx, int n_rows, int n_cols, vec_ops::VecOpsConfig& config, grumpkin::scalar_t* result);
+
+extern "C" cudaError_t grumpkin_prepare_matrix_cuda(
+  grumpkin::scalar_t* mat,
+  int* row_ptr,
+  int* col_idx,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
+  device_context::DeviceContext& ctx,
+  HybridMatrix<grumpkin::scalar_t>* output);
+
+extern "C" cudaError_t grumpkin_compute_t_cuda(
+  HybridMatrix<grumpkin::scalar_t>* a,
+  HybridMatrix<grumpkin::scalar_t>* b,
+  HybridMatrix<grumpkin::scalar_t>* c,
+  grumpkin::scalar_t* z1_u,
+  grumpkin::scalar_t* z1_x,
+  grumpkin::scalar_t* z1_qw,
+  grumpkin::scalar_t* z2_u,
+  grumpkin::scalar_t* z2_x,
+  grumpkin::scalar_t* z2_qw,
+  grumpkin::scalar_t* e,
+  int n_pub,
+  int n_rows,
+  int n_cols,
+  device_context::DeviceContext& ctx,
+  grumpkin::scalar_t* result);
+
+extern "C" cudaError_t grumpkin_update_e_cuda(
+  grumpkin::scalar_t* e,
+  grumpkin::scalar_t* t,
+  grumpkin::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t grumpkin_return_e_cuda(
+  grumpkin::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  grumpkin::scalar_t* h_e);
+
 extern "C" cudaError_t grumpkin_transpose_matrix_cuda(
   const grumpkin::scalar_t* input,
   uint32_t row_size,
@@ -111,9 +143,21 @@ extern "C" cudaError_t grumpkin_bit_reverse_cuda(
   const grumpkin::scalar_t* input, uint64_t n, vec_ops::BitReverseConfig& config, grumpkin::scalar_t* output);
 
 
-extern "C" void grumpkin_generate_scalars(grumpkin::scalar_t* scalars, int size);
+extern "C" cudaError_t grumpkin_build_merkle_tree(
+  const grumpkin::scalar_t* leaves,
+  grumpkin::scalar_t* digests,
+  unsigned int height,
+  unsigned int input_block_len, 
+  const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* compression,
+  const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* bottom_layer,
+  const merkle_tree::TreeBuilderConfig& tree_config);
 
-extern "C" cudaError_t grumpkin_scalar_convert_montgomery(
-  grumpkin::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
+  extern "C" cudaError_t grumpkin_mmcs_commit_cuda(
+    const matrix::Matrix<grumpkin::scalar_t>* leaves,
+    unsigned int number_of_inputs,
+    grumpkin::scalar_t* digests,
+    const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* hasher,
+    const hash::Hasher<grumpkin::scalar_t, grumpkin::scalar_t>* compression,
+    const merkle_tree::TreeBuilderConfig& tree_config);
 
 #endif

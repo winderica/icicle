@@ -9,17 +9,16 @@
 
 #include <cuda_runtime.h>
 #include "gpu-utils/device_context.cuh"
+#include "merkle-tree/merkle.cuh"
+#include "matrix/matrix.cuh"
 #include "curves/params/vesta.cuh"
 #include "msm/msm.cuh"
 #include "vec_ops/vec_ops.cuh"
 
 extern "C" cudaError_t vesta_precompute_msm_bases_cuda(
   vesta::affine_t* bases,
-  int bases_size,
-  int precompute_factor,
-  int _c,
-  bool are_bases_on_device,
-  device_context::DeviceContext& ctx,
+  int msm_size,
+  msm::MSMConfig& config,
   vesta::affine_t* output_bases);
 
 extern "C" cudaError_t vesta_msm_cuda(
@@ -39,11 +38,19 @@ extern "C" cudaError_t vesta_affine_convert_montgomery(
 extern "C" cudaError_t vesta_projective_convert_montgomery(
   vesta::projective_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
 
+extern "C" void vesta_generate_scalars(vesta::scalar_t* scalars, int size);
+
+extern "C" cudaError_t vesta_scalar_convert_montgomery(
+  vesta::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
+
 extern "C" cudaError_t vesta_mul_cuda(
   vesta::scalar_t* vec_a, vesta::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, vesta::scalar_t* result);
 
 extern "C" cudaError_t vesta_add_cuda(
   vesta::scalar_t* vec_a, vesta::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, vesta::scalar_t* result);
+
+extern "C" cudaError_t vesta_accumulate_cuda(
+  vesta::scalar_t* vec_a, vesta::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config);
 
 extern "C" cudaError_t vesta_sub_cuda(
   vesta::scalar_t* vec_a, vesta::scalar_t* vec_b, int n, vec_ops::VecOpsConfig& config, vesta::scalar_t* result);
@@ -55,28 +62,42 @@ extern "C" cudaError_t vesta_prepare_matrix_cuda(
   vesta::scalar_t* mat,
   int* row_ptr,
   int* col_idx,
-  int n_rows,
+  int* sparse_to_original,
+  int* dense_to_original,
+  int num_sparse_rows,
+  int num_dense_rows,
   device_context::DeviceContext& ctx,
-  vesta::scalar_t* output_mat,
-  int* output_row_ptr,
-  int* output_col_idx);
+  HybridMatrix<vesta::scalar_t>* output);
 
 extern "C" cudaError_t vesta_compute_t_cuda(
-  vesta::scalar_t* mat_a,
-  const int* row_ptr_a,
-  const int* col_idx_a,
-  vesta::scalar_t* mat_b,
-  const int* row_ptr_b,
-  const int* col_idx_b,
-  vesta::scalar_t* mat_c,
-  const int* row_ptr_c,
-  const int* col_idx_c,
-  vesta::scalar_t* z1,
-  vesta::scalar_t* z2,
+  HybridMatrix<vesta::scalar_t>* a,
+  HybridMatrix<vesta::scalar_t>* b,
+  HybridMatrix<vesta::scalar_t>* c,
+  vesta::scalar_t* z1_u,
+  vesta::scalar_t* z1_x,
+  vesta::scalar_t* z1_qw,
+  vesta::scalar_t* z2_u,
+  vesta::scalar_t* z2_x,
+  vesta::scalar_t* z2_qw,
+  vesta::scalar_t* e,
+  int n_pub,
   int n_rows,
   int n_cols,
   device_context::DeviceContext& ctx,
   vesta::scalar_t* result);
+
+extern "C" cudaError_t vesta_update_e_cuda(
+  vesta::scalar_t* e,
+  vesta::scalar_t* t,
+  vesta::scalar_t* r,
+  int n,
+  device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t vesta_return_e_cuda(
+  vesta::scalar_t* d_e,
+  int n,
+  device_context::DeviceContext& ctx,
+  vesta::scalar_t* h_e);
 
 extern "C" cudaError_t vesta_transpose_matrix_cuda(
   const vesta::scalar_t* input,
@@ -87,9 +108,25 @@ extern "C" cudaError_t vesta_transpose_matrix_cuda(
   bool on_device,
   bool is_async);
 
-extern "C" void vesta_generate_scalars(vesta::scalar_t* scalars, int size);
+extern "C" cudaError_t vesta_bit_reverse_cuda(
+  const vesta::scalar_t* input, uint64_t n, vec_ops::BitReverseConfig& config, vesta::scalar_t* output);
 
-extern "C" cudaError_t vesta_scalar_convert_montgomery(
-  vesta::scalar_t* d_inout, size_t n, bool is_into, device_context::DeviceContext& ctx);
+
+extern "C" cudaError_t vesta_build_merkle_tree(
+  const vesta::scalar_t* leaves,
+  vesta::scalar_t* digests,
+  unsigned int height,
+  unsigned int input_block_len, 
+  const hash::Hasher<vesta::scalar_t, vesta::scalar_t>* compression,
+  const hash::Hasher<vesta::scalar_t, vesta::scalar_t>* bottom_layer,
+  const merkle_tree::TreeBuilderConfig& tree_config);
+
+  extern "C" cudaError_t vesta_mmcs_commit_cuda(
+    const matrix::Matrix<vesta::scalar_t>* leaves,
+    unsigned int number_of_inputs,
+    vesta::scalar_t* digests,
+    const hash::Hasher<vesta::scalar_t, vesta::scalar_t>* hasher,
+    const hash::Hasher<vesta::scalar_t, vesta::scalar_t>* compression,
+    const merkle_tree::TreeBuilderConfig& tree_config);
 
 #endif
